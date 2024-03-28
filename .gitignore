@@ -2,4 +2,4 @@
 */ROMs/*
 .DS_Store
 *.out
-
+chip8/rustychip8/target/*
