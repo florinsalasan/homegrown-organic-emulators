@@ -6,6 +6,7 @@
 #define SCREEN_WIDTH 64
 
 void clear_screen(bool[SCREEN_HEIGHT][SCREEN_WIDTH]);
+void push_to_stack(unsigned short*, short, unsigned char*);
 
 // Font set
 unsigned char fontset[80] = {
@@ -38,16 +39,57 @@ bool display[SCREEN_WIDTH][SCREEN_HEIGHT] = {false};
 unsigned short stack[32] = {0};
 
 // The delay and sound timer registers:
+// These get decremented 60 times per second until hitting 0, don't
+// have a place where their values are first set or when the timers start
 unsigned char delay_timer = 0;
 unsigned char sound_timer = 0;
 
+// Program counter, 'PC', pointer to the current instruction in memory:
+// Since memory was set to unsigned chars, need to match types, I think
+unsigned char* PC;
+
+// Index register, 'I', pointer to locations in memory
+unsigned char* I;
+
+// Create the 16 different 8-bit general-purpose variable registers that 
+// are number 0-F in hex ie 'V0' to 'VF'
+unsigned char V0 = 0;
+unsigned char V1 = 0;
+unsigned char V2 = 0;
+unsigned char V3 = 0;
+unsigned char V4 = 0;
+unsigned char V5 = 0;
+unsigned char V6 = 0;
+unsigned char V7 = 0;
+unsigned char V8 = 0;
+unsigned char V9 = 0;
+unsigned char VA = 0;
+unsigned char VB = 0;
+unsigned char VC = 0;
+unsigned char VD = 0;
+unsigned char VE = 0;
+// VF is kind of a special register, is also used as a flag register where
+// many instructions set it to either 1 or 0 based on what the instruction 
+// needs, ie can be used as a carry flag.
+unsigned char VF = 0;
+
 // implement the keypad somehow:
+// Seems like it might be better to do this in the SDL implementation for
+// actually drawing a window and interacting with it
 
 int main () {
     // Run the instruction loop in here
+    // The loop is fetch, decode, execute
+    // instruction is fetched from memory at the current PC
+    // Instructions are two bytes, so read two bytes from memory and 
+    // increment 
+
+    // The fetched instruction is then decoded 
+    // the decoded instruction is then executed
 
 }
 
+// helper functions to use for different instruction codes.
 void clear_screen (bool display[SCREEN_HEIGHT][SCREEN_WIDTH]) {
 
     int i, j;
@@ -58,4 +100,11 @@ void clear_screen (bool display[SCREEN_HEIGHT][SCREEN_WIDTH]) {
     }
     printf("clearing");
 
+}
+
+// Stack helpers, should probably have push and pop at the very least
+void push_to_stack (unsigned short* the_stack, short value_pushed, unsigned char* index) {
+
+
+    
 }
