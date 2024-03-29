@@ -7,6 +7,7 @@
 
 void clear_screen(bool[SCREEN_HEIGHT][SCREEN_WIDTH]);
 void push_to_stack(unsigned short*, short, unsigned char*);
+short pop_from_stack(unsigned short*, unsigned char*);
 
 // Font set
 unsigned char fontset[80] = {
@@ -105,6 +106,19 @@ void clear_screen (bool display[SCREEN_HEIGHT][SCREEN_WIDTH]) {
 // Stack helpers, should probably have push and pop at the very least
 void push_to_stack (unsigned short* the_stack, short value_pushed, unsigned char* index) {
 
+    unsigned long insert_index = (unsigned long) index + 1;
+    the_stack[insert_index * sizeof(value_pushed)] = value_pushed;
+    index++;
+    return;
+    
+}
 
+
+short pop_from_stack (unsigned short* the_stack, unsigned char* index) {
+
+    unsigned long curr_index = (unsigned long) index;
+    short to_return = the_stack[curr_index * sizeof(short)];
+    index--;
+    return to_return;
     
 }
