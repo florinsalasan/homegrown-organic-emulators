@@ -8,6 +8,7 @@
 void clear_screen(bool[SCREEN_HEIGHT][SCREEN_WIDTH]);
 void push_to_stack(unsigned short*, short, unsigned char*);
 short pop_from_stack(unsigned short*, unsigned char*);
+short fetch_instruction();
 
 // Font set
 unsigned char fontset[80] = {
@@ -121,4 +122,23 @@ short pop_from_stack (unsigned short* the_stack, unsigned char* index) {
     index--;
     return to_return;
     
+}
+
+short fetch_instruction () {
+    // Probably changes based on the endianness of the machine this is run on
+    // I'm writing this on an Apple silicon machine that is little-endian, 
+    // meanwhile chip-8 is big-endian so for my machine I need to swap instruction
+    // Just do some of the switch cases in here I think
+
+    unsigned short op = memory[*PC] << 8 | memory[*PC + 1];
+
+    switch (op & 0xF000) {
+        case 0x0000:
+            switch (op & 0x00FF) {
+                case 0X00E0:
+                    printf("[OK] 0x%X: 00E0\n", op);
+                    clear_screen(display);
+            }
+    }
+
 }
