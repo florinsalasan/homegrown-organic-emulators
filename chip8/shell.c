@@ -1,14 +1,13 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 #define SCREEN_HEIGHT 32
 #define SCREEN_WIDTH 64
 
-void clear_screen(bool[SCREEN_HEIGHT][SCREEN_WIDTH]);
+void clear_screen(bool[SCREEN_HEIGHT*SCREEN_WIDTH]);
 void push_to_stack(unsigned short*, short, unsigned char*);
 short pop_from_stack(unsigned short*, unsigned char*);
-short fetch_instruction();
+void run_instruction();
 
 // Font set
 unsigned char fontset[80] = {
@@ -34,7 +33,7 @@ unsigned char fontset[80] = {
 unsigned char memory[4096] = {0};
 
 // display of 32x64
-bool display[SCREEN_WIDTH][SCREEN_HEIGHT] = {false};
+bool display[SCREEN_WIDTH*SCREEN_HEIGHT] = {false};
 
 // Use this for the call stack, early ones apparently had space for two
 // instructions, I went a bit overboard and have space for 32 16-bit addresses
@@ -92,13 +91,11 @@ int main () {
 }
 
 // helper functions to use for different instruction codes.
-void clear_screen (bool display[SCREEN_HEIGHT][SCREEN_WIDTH]) {
+void clear_screen (bool display[SCREEN_HEIGHT*SCREEN_WIDTH]) {
 
     int i, j;
-    for (i = 0; i < SCREEN_HEIGHT; i++) {
-        for (j = 0; j < SCREEN_WIDTH; j++) {
-            display[j][i] = false;
-        }
+    for (i = 0; i < SCREEN_HEIGHT * SCREEN_WIDTH; i++) {
+        display[i] = false;
     }
     printf("clearing");
 
@@ -124,7 +121,7 @@ short pop_from_stack (unsigned short* the_stack, unsigned char* index) {
     
 }
 
-short fetch_instruction () {
+void run_instruction () {
     // Probably changes based on the endianness of the machine this is run on
     // I'm writing this on an Apple silicon machine that is little-endian, 
     // meanwhile chip-8 is big-endian so for my machine I need to swap instruction
