@@ -1,5 +1,5 @@
-#include "include/sdl_layer.h"
 #include <stdbool.h>
+#include "../include/sdl_layer.h"
 
 #include <SDL2/SDL.h>
 
@@ -23,4 +23,17 @@ void init_display(void) {
     screen = SDL_CreateWindow("CHIP-8", SDL_WINDOWPOS_CENTERED,
                               SDL_WINDOWPOS_CENTERED, 64 * 8, 32 * 8, 0);
     renderer = SDL_CreateRenderer(screen, -1, SDL_RENDERER_ACCELERATED);
+}
+
+// draw on sdl display
+void draw(unsigned char* display) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+    // clear the display
+    SDL_RenderClear(renderer);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+    // Iterate through the display (64*32)
+
 }
