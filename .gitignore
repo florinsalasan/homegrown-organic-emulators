@@ -3,3 +3,4 @@
 .DS_Store
 *.out
 chip8/rusty_chip8/target/*
+chip8/build/*
