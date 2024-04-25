@@ -18,3 +18,6 @@ emulating the 6502 from MOS Technology should be able to execute the instruction
 the modified chip in the NES would have run. This will be the current focus for the project
 after I get a CHIP-8 interpreter up and running.
 
+## TODO:
+
+- [ ] Pretty much everything, 8080 and 6502 are nowhere near running and chip-8 still requires instructions to be implemented
