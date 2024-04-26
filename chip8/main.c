@@ -222,9 +222,16 @@ void emulate_cycle(void) {
 
     printf("opcode second and third nibbles: %u, %u\n", X, Y);
 
-    switch (op & 0xF000) {
-        // So the bit mapping here removes the four leftmost bits leaving the 
-        // remaining 3 to check against
+    switch (op) {
+        case 0x00E0: // Clear screen
+            debug_print("[OK] 0x%X: 00E0\n", op);
+            for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+                display[i] = 0;
+            }
+            PC += 2;
+            break;
+        case (op & 0xF000):
+            switch (op)
 
     }
 
