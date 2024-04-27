@@ -208,6 +208,8 @@ void emulate_cycle(void) {
 
     unsigned short op = memory[PC] << 8 | memory[PC + 1];
     printf("opcode: %u\n", op);
+    int opcode_type = op & 0xF000 << 12;
+    int op_nibbles = op & 0x0FFF;
 
     // grab 'nibbles' from the instruction opcode, 
     // first nibble is what specifies the instruction type
@@ -222,17 +224,19 @@ void emulate_cycle(void) {
 
     printf("opcode second and third nibbles: %u, %u\n", X, Y);
 
-    switch (op) {
-        case 0x00E0: // Clear screen
-            debug_print("[OK] 0x%X: 00E0\n", op);
-            for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-                display[i] = 0;
+    switch (opcode_type) {
+        case 0x0: // First digit is a zero: 
+            switch(op_nibbles) {
+                case 0x0E0:
+                    printf("[OK] 0x%X: 00E0\n", op);
+                    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+                        display[i] = 0;
+                    }
+                    PC += 2;
+                    break;
             }
-            PC += 2;
-            break;
-        case (op & 0xF000):
-            switch (op)
-
+        default:
+            error("[ERROR] Unknown opcode encountered");
     }
 
 }
