@@ -78,6 +78,9 @@ unsigned short PC = 0x200;
 // take a very excessive implementation of eight 16-bit addresses.
 unsigned short stack[16] = {0};
 
+// points to the top of the stack so to speak.
+unsigned short stack_idx = 0;
+
 // the keypad:
 unsigned char keypad[16] = {0};
 
@@ -227,14 +230,48 @@ void emulate_cycle(void) {
     switch (opcode_type) {
         case 0x0: // First digit is a zero: 
             switch(op_nibbles) {
-                case 0x0E0:
+                case 0x0E0: // combined the opcode is 0x00E0 which clears the screen
                     printf("[OK] 0x%X: 00E0\n", op);
                     for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
                         display[i] = 0;
                     }
                     PC += 2;
                     break;
+                case 0x0EE: // Return from subroutine setting PC to address at top of 
+                    // stack, then subtracting one from the stack pointer.
+                    printf("[OK] 0x%X: 00EE\n", op);
+                    // Get top of stack
+                    PC = stack[stack_idx];
+                    stack_idx--;
+                    break;
+                // Remaining cases for 0x0NNN are made to jump to a machine code routine
+                // at NNN, according to one of the guides I'm following, this instruction
+                // does not get implemented in modern interpreters.
             }
+        case 0x1:
+            // For this case of 0x1NNN, it is a jump to location NNN, ie setting the PC
+            // to NNN.
+            PC = op_nibbles;
+            break;
+        case 0x2:
+            // 0x2NNN - Call subroutine at NNN, interpreter increments the stack pointer,
+            // and puts the current PC on the top of the stack, the PC is then set to NNN
+            stack_idx++;
+            stack[stack_idx] = PC;
+            PC = op_nibbles;
+            break;
+        case 0x3:
+            // 0x3XNN, skips the next instruction if VX = NN;
+            if (V[X] ==  (op_nibbles & 0x0FF)) {
+                PC += 2;
+            }
+            break;
+        case 0x4:
+            // 0x4NN, skips the instruction if VX != NN;
+            if (V[X] !=  (op_nibbles & 0x0FF)) {
+                PC += 2;
+            }
+            break;
         default:
             error("[ERROR] Unknown opcode encountered");
     }
