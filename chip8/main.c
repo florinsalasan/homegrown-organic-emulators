@@ -267,8 +267,14 @@ void emulate_cycle(void) {
             }
             break;
         case 0x4:
-            // 0x4NN, skips the instruction if VX != NN;
+            // 0x4XNN, skips the instruction if VX != NN;
             if (V[X] !=  (op_nibbles & 0x0FF)) {
+                PC += 2;
+            }
+            break;
+        case 0x5:
+            // 0x5XY0, skip the next instruction if VX = VY
+            if (V[X] == V[Y]) {
                 PC += 2;
             }
             break;
