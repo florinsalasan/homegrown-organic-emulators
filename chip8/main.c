@@ -278,6 +278,64 @@ void emulate_cycle(void) {
                 PC += 2;
             }
             break;
+        case 0x6:
+            // 0x6XNN, sets V[X] to NN
+            V[X] = (op_nibbles & 0x0FF);
+            break;
+        case 0x7:
+            // 0x7XNN, sets VX to value at VX + NN;
+            V[X] += (op_nibbles & 0x0FF);
+            break;
+        case 0x8:
+            // 0x8XYZ, last nibble has different operators so break this 
+            // section down some more with a sub switch statement.
+            switch (op_nibbles & 0x00F) {
+                case 0x0:
+                    // 0x8XY0: Set VX to VY 
+                    V[X] = V[Y];
+                    break;
+                case 0x1:
+                    // 0x8XY1: set VX to VX OR VY; do bitwise OR on the registers
+                    V[X] = V[X] | V[Y];
+                    break;
+                case 0x2:
+                    // 0x8XY2: set VX to VX AND VY; do bitwise AND;
+                    V[X] = V[X] & V[Y];
+                    break;
+                case 0x3:
+                    // 0x8XY3: set VX to VX XOR VY; do bitwise XOR;
+                    V[X] = V[X] ^ V[Y];
+                    break;
+                case 0x4: { // Include the braces to be able to define reg_sum
+                    // 0x8XY4: set VX to VX + VY; use VF as carry if result is more than 255;
+                    // VF set to 1 in that case, otherwise 0 and only lowest 8 bits are 
+                    // kept and stored in VX;
+                    short reg_sum = V[X] + V[Y];
+                    if (reg_sum > 255) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    // Keep the lowest 8-bits of the sum only by bitwise and with the 
+                    // equivalent of the last two bits;
+                    reg_sum &= 0xFF;
+                    V[X] = (unsigned char)reg_sum;
+                    break;
+                }
+                case 0x5: 
+                    // 0x8XY5: Set VX to VX - VY, VF set to NOT Borrow;
+                    // if VX > VY then VF = 1, 0 otherwise;
+                    if (V[X] > V[Y]) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    // There should probably be better handling here, unsure of 
+                    // the exact implementation needed for this instruction
+                    V[X] = V[X] - V[Y];
+                    break;
+            }
+            break;
         default:
             error("[ERROR] Unknown opcode encountered");
     }
