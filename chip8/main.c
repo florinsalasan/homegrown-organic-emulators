@@ -252,6 +252,7 @@ void emulate_cycle(void) {
                     printf("[ERROR] these instructions shouldn't be getting called, %X\n", op);
                     break;
             }
+            break;
         case 0x1:
             // For this case of 0x1NNN, it is a jump to location NNN, ie setting the PC
             // to NNN.
@@ -340,14 +341,36 @@ void emulate_cycle(void) {
                     V[X] = V[X] - V[Y];
                     break;
                 case 0x6:
-                // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
-                // otherise it's set to 0, then VX gets divided by 2;
+                    // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
+                    // otherise it's set to 0, then VX gets divided by 2;
                     if (V[X] & 0b00000001) { // Bit mask to see if last bit is 1;
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
                     V[X] /= 2;
+                    break;
+                case 0x7:
+                    // 0x8XY7: set VX to VY - VX, if VY > VX then VF = 1; 0 otherwise
+                    if (V[Y] > V[X]) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    V[X] = V[Y] - V[X];
+                    break;
+                case 0xE:
+                    // 0x8XYE: If the most significant bit of VX is 1, then VF is set to 1
+                    // otherwise it's set to 0, then V[X] is multiplied by 2;
+                    if (V[X] & 0b10000000) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    V[X] *= 2;
+                    break;
+                default:
+                    printf("[ERROR] Some other instruction in the 0x8XYZ that is not implmented was called: %X\n", op);
                     break;
             }
             break;
