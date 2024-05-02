@@ -210,7 +210,7 @@ void stop_display(void) {
 void emulate_cycle(void) {
 
     unsigned short op = memory[PC] << 8 | memory[PC + 1];
-    printf("opcode: %u\n", op);
+    printf("opcode: %X\n", op);
     int opcode_type = op & 0xF000 << 12;
     int op_nibbles = op & 0x0FFF;
 
@@ -225,7 +225,8 @@ void emulate_cycle(void) {
     unsigned short X = (op & 0x0F00) >> 8;
     unsigned short Y = (op & 0x00F0) >> 4;
 
-    printf("opcode second and third nibbles: %u, %u\n", X, Y);
+    printf("opcode_type: %X, op_nibbles: %X\n", X, Y);
+    printf("opcode second and third nibbles: %X, %X\n", X, Y);
 
     switch (opcode_type) {
         case 0x0: // First digit is a zero: 
@@ -247,10 +248,14 @@ void emulate_cycle(void) {
                 // Remaining cases for 0x0NNN are made to jump to a machine code routine
                 // at NNN, according to one of the guides I'm following, this instruction
                 // does not get implemented in modern interpreters.
+                default:
+                    printf("[ERROR] these instructions shouldn't be getting called, %X\n", op);
+                    break;
             }
         case 0x1:
             // For this case of 0x1NNN, it is a jump to location NNN, ie setting the PC
             // to NNN.
+            printf("[OK] 0x%X: 1NNN\n", op);
             PC = op_nibbles;
             break;
         case 0x2:
@@ -334,6 +339,16 @@ void emulate_cycle(void) {
                     // the exact implementation needed for this instruction
                     V[X] = V[X] - V[Y];
                     break;
+                case 0x6:
+                // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
+                // otherise it's set to 0, then VX gets divided by 2;
+                    if (V[X] & 0b00000001) { // Bit mask to see if last bit is 1;
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    V[X] /= 2;
+                    break;
             }
             break;
         default:
@@ -352,7 +367,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printf("[PENDING] Initializing CHIP-8 interpreter");
+    printf("[PENDING] Initializing CHIP-8 interpreter\n");
     init_cpu();
     printf("[OK] Done!");
 
@@ -371,10 +386,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    printf("[OK] Rom loaded successfully!");
+    printf("[OK] Rom loaded successfully!\n");
 
     init_sdl_display();
-    printf("[OK] Display initialized");
+    printf("[OK] Display initialized\n");
 
     while (!should_quit) {
 
