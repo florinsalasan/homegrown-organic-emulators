@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include <SDL.h>
 #include "include/chip8.h"
@@ -374,6 +376,29 @@ void emulate_cycle(void) {
                     break;
             }
             break;
+        case 0x9:
+            // 0x9XY0: Skip the next instruction if VX != VY;
+            if (((op_nibbles & 0x00F) == 0) && V[X] != V[Y]) {
+                PC += 2;
+            }
+            break;
+        case 0xA:
+            // 0xANNN: Set special register I to NNN;
+            I = op_nibbles;
+            break;
+        case 0xB:
+            // 0xBNNN: set PC to NNN + V0;
+            PC = V[0] + op_nibbles;
+            break;
+        case 0xC:
+            // 0xCXNN: Set V[X] to a random byte and NN, ie generate a rand int
+            // from 0 to 255 and then do bitwise AND with NN and store it in V[X]
+            srand(time(NULL));
+            int r = rand() % 255;
+            V[X] = r & (op_nibbles & 0x0FF);
+            break;
+        // case 0xD:
+            // 0xDXYN
         default:
             error("[ERROR] Unknown opcode encountered");
     }
