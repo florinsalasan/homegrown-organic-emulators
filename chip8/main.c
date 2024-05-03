@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -397,8 +398,25 @@ void emulate_cycle(void) {
             int r = rand() % 255;
             V[X] = r & (op_nibbles & 0x0FF);
             break;
-        // case 0xD:
-            // 0xDXYN
+        case 0xD: {
+            // 0xDXYN: display a sprite starting at memory location I at (VX, VY),
+            // use VF for collision bool, Sprites that are read in are XORed onto the display
+            // if any pixels are erased because of this, VF is set to 1, otherwise to 0.
+            // if the sprite is cut off, it should wrap around the screen to the opposite side
+            
+            // Start by isolating the last nibble since that will be the size of the sprite
+            // being displayed.
+            int n_bytes = op_nibbles & 0x00F;
+            // Get X and Y coords from VX and VY;
+            int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
+            int y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
+            int combined_display_idx = x_coord + y_coord * SCREEN_WIDTH; // display is a 1D array
+            // reset V[0xF] to 0 before beginning
+            V[0xF] = 0;
+            // Draw the sprite
+            }
+
+        }
         default:
             error("[ERROR] Unknown opcode encountered");
     }
