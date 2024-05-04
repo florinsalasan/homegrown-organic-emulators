@@ -233,6 +233,7 @@ void emulate_cycle(void) {
 
     switch (opcode_type) {
         case 0x0: // First digit is a zero: 
+            printf("FROM case 0x0, opcode_type: %X, opcode: %X\n", opcode_type, op);
             switch(op_nibbles) {
                 case 0x0E0: // combined the opcode is 0x00E0 which clears the screen
                     printf("[OK] 0x%X: 00E0\n", op);
@@ -253,6 +254,7 @@ void emulate_cycle(void) {
                 // does not get implemented in modern interpreters.
                 default:
                     printf("[ERROR] these instructions shouldn't be getting called, %X\n", op);
+                    PC += 2;
                     break;
             }
             break;
@@ -274,26 +276,31 @@ void emulate_cycle(void) {
             if (V[X] ==  (op_nibbles & 0x0FF)) {
                 PC += 2;
             }
+            PC += 2;
             break;
         case 0x4:
             // 0x4XNN, skips the instruction if VX != NN;
             if (V[X] !=  (op_nibbles & 0x0FF)) {
                 PC += 2;
             }
+            PC += 2;
             break;
         case 0x5:
             // 0x5XY0, skip the next instruction if VX = VY
             if (V[X] == V[Y]) {
                 PC += 2;
             }
+            PC += 2;
             break;
         case 0x6:
             // 0x6XNN, sets V[X] to NN
             V[X] = (op_nibbles & 0x0FF);
+            PC += 2;
             break;
         case 0x7:
             // 0x7XNN, sets VX to value at VX + NN;
             V[X] += (op_nibbles & 0x0FF);
+            PC += 2;
             break;
         case 0x8:
             // 0x8XYZ, last nibble has different operators so break this 
@@ -302,18 +309,22 @@ void emulate_cycle(void) {
                 case 0x0:
                     // 0x8XY0: Set VX to VY 
                     V[X] = V[Y];
+                    PC += 2;
                     break;
                 case 0x1:
                     // 0x8XY1: set VX to VX OR VY; do bitwise OR on the registers
                     V[X] = V[X] | V[Y];
+                    PC += 2;
                     break;
                 case 0x2:
                     // 0x8XY2: set VX to VX AND VY; do bitwise AND;
                     V[X] = V[X] & V[Y];
+                    PC += 2;
                     break;
                 case 0x3:
                     // 0x8XY3: set VX to VX XOR VY; do bitwise XOR;
                     V[X] = V[X] ^ V[Y];
+                    PC += 2;
                     break;
                 case 0x4: { // Include the braces to be able to define reg_sum
                     // 0x8XY4: set VX to VX + VY; use VF as carry if result is more than 255;
@@ -329,6 +340,7 @@ void emulate_cycle(void) {
                     // equivalent of the last two bits;
                     reg_sum &= 0xFF;
                     V[X] = (unsigned char)reg_sum;
+                    PC += 2;
                     break;
                 }
                 case 0x5: 
@@ -342,6 +354,7 @@ void emulate_cycle(void) {
                     // There should probably be better handling here, unsure of 
                     // the exact implementation needed for this instruction
                     V[X] = V[X] - V[Y];
+                    PC += 2;
                     break;
                 case 0x6:
                     // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
@@ -352,6 +365,7 @@ void emulate_cycle(void) {
                         V[0xF] = 0;
                     }
                     V[X] /= 2;
+                    PC += 2;
                     break;
                 case 0x7:
                     // 0x8XY7: set VX to VY - VX, if VY > VX then VF = 1; 0 otherwise
@@ -361,6 +375,7 @@ void emulate_cycle(void) {
                         V[0xF] = 0;
                     }
                     V[X] = V[Y] - V[X];
+                    PC += 2;
                     break;
                 case 0xE:
                     // 0x8XYE: If the most significant bit of VX is 1, then VF is set to 1
@@ -371,6 +386,7 @@ void emulate_cycle(void) {
                         V[0xF] = 0;
                     }
                     V[X] *= 2;
+                    PC += 2;
                     break;
                 default:
                     printf("[ERROR] Some other instruction in the 0x8XYZ that is not implmented was called: %X\n", op);
@@ -382,10 +398,12 @@ void emulate_cycle(void) {
             if (((op_nibbles & 0x00F) == 0) && V[X] != V[Y]) {
                 PC += 2;
             }
+            PC += 2;
             break;
         case 0xA:
             // 0xANNN: Set special register I to NNN;
             I = op_nibbles;
+            PC += 2;
             break;
         case 0xB:
             // 0xBNNN: set PC to NNN + V0;
@@ -397,6 +415,7 @@ void emulate_cycle(void) {
             srand(time(NULL));
             int r = rand() % 255;
             V[X] = r & (op_nibbles & 0x0FF);
+            PC += 2;
             break;
         case 0xD: {
             // 0xDXYN: display a sprite starting at memory location I at (VX, VY),
@@ -415,23 +434,74 @@ void emulate_cycle(void) {
             V[0xF] = 0;
             // Draw the sprite
             for (int nth_byte = 0; nth_byte < n_bytes; nth_byte++) {
-                curr_px = memory[I + nth_byte];
+                unsigned short curr_px = memory[I + nth_byte];
                 // loop over the bits from the byte grabbed earlier;
                 for (int nth_bit = 0; nth_bit < 8; nth_bit++) {
                     if ((curr_px & (0x80 >> nth_bit)) != 0) {
                         // Check if there is a pixel that is already on that will be switched off
-                        if (display[(V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH))] == 1 {
+                        if (display[(V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH))] == 1) {
                             // Set the collision flag to 1 if theres a pixel already on that will
                             // be shut off.
                             V[0xF] = 1;
                         }
+                        // Set display with XOR 
+                        display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
                     }
                 }
             }
-
-        }
+            PC += 2;
+        }   break;
+        case 0xE:
+            // two different instructions, 0xEX9E and 0xEXA1;
+            switch (op_nibbles & 0x0FF) {
+                case 0x9E:
+                    // 0xEX9E: skip instruction if the key with the value of VX is pressed
+                    if (keypad[V[X]]) {
+                        PC += 2;
+                    }
+                    PC += 2;
+                    break;
+                case 0xA1:
+                    // 0xEXA1: skip instruction if key with value of VX is NOT pressed
+                    if (!keypad[V[X]]) {
+                        PC += 2;
+                    }
+                    PC += 2;
+                    break;
+                default:
+                    // shouldn't get here
+                    printf("[ERROR] Unknown op of 0xEXXX: 0x%X\n", op);
+            }
+            break;
+        case 0xF:
+            // Couple of instructions in this opcode type;
+            switch(op_nibbles & 0x0FF) {
+                case 0x07:
+                    // 0xFX07: set VX to the value of the delay timer;
+                    V[X] = delay_timer;
+                    PC += 2;
+                    break;
+                case 0x0A:
+                    // 0xFX0A: Wait for a keypress, then store the value in VX
+                    // All execution should stop until a key is pressed. Done by not incrementing
+                    // PC until a keypress is found.
+                    for (int i = 0; i < 16; i++) {
+                        if (keypad[i]) {
+                            V[X] = i;
+                            PC += 2;
+                            break;
+                        }
+                    }
+                    break;
+                case 0x15:
+                    // 0xFX15: opposite of 0xFX07 where this time delay timer is set to value of VX;
+                    delay_timer = V[X];
+                    PC += 2;
+                    break;
+            }
+            break;
         default:
-            error("[ERROR] Unknown opcode encountered");
+            error("[ERROR] Unknown opcode encountered: 0x%X\n", op);
     }
 
 }
