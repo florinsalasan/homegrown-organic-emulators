@@ -214,7 +214,8 @@ void emulate_cycle(void) {
 
     unsigned short op = memory[PC] << 8 | memory[PC + 1];
     printf("opcode: %X\n", op);
-    int opcode_type = op & 0xF000 << 12;
+    int opcode_type = (op & 0xF000) >> 12;
+
     int op_nibbles = op & 0x0FFF;
 
     // grab 'nibbles' from the instruction opcode, 
@@ -228,8 +229,7 @@ void emulate_cycle(void) {
     unsigned short X = (op & 0x0F00) >> 8;
     unsigned short Y = (op & 0x00F0) >> 4;
 
-    printf("opcode_type: %X, op_nibbles: %X\n", X, Y);
-    printf("opcode second and third nibbles: %X, %X\n", X, Y);
+    printf("opcode_type: %X, op_nibbles: X: %X, Y: %X\n", opcode_type, X, Y);
 
     switch (opcode_type) {
         case 0x0: // First digit is a zero: 
