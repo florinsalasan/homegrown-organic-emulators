@@ -414,6 +414,19 @@ void emulate_cycle(void) {
             // reset V[0xF] to 0 before beginning
             V[0xF] = 0;
             // Draw the sprite
+            for (int nth_byte = 0; nth_byte < n_bytes; nth_byte++) {
+                curr_px = memory[I + nth_byte];
+                // loop over the bits from the byte grabbed earlier;
+                for (int nth_bit = 0; nth_bit < 8; nth_bit++) {
+                    if ((curr_px & (0x80 >> nth_bit)) != 0) {
+                        // Check if there is a pixel that is already on that will be switched off
+                        if (display[(V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH))] == 1 {
+                            // Set the collision flag to 1 if theres a pixel already on that will
+                            // be shut off.
+                            V[0xF] = 1;
+                        }
+                    }
+                }
             }
 
         }
