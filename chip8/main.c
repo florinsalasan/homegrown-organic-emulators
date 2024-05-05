@@ -444,9 +444,9 @@ void emulate_cycle(void) {
                             // be shut off.
                             V[0xF] = 1;
                         }
-                        // Set display with XOR 
-                        display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
                     }
+                    // Set display with XOR 
+                    display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
                 }
             }
             PC += 2;
