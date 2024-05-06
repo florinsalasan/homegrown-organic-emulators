@@ -233,7 +233,6 @@ void emulate_cycle(void) {
 
     switch (opcode_type) {
         case 0x0: // First digit is a zero: 
-            printf("FROM case 0x0, opcode_type: %X, opcode: %X\n", opcode_type, op);
             switch(op_nibbles) {
                 case 0x0E0: // combined the opcode is 0x00E0 which clears the screen
                     printf("[OK] 0x%X: 00E0\n", op);
@@ -267,12 +266,14 @@ void emulate_cycle(void) {
         case 0x2:
             // 0x2NNN - Call subroutine at NNN, interpreter increments the stack pointer,
             // and puts the current PC on the top of the stack, the PC is then set to NNN
+            printf("[OK] 0x%X: 2NNN\n", op);
             stack_idx++;
             stack[stack_idx] = PC;
             PC = op_nibbles;
             break;
         case 0x3:
             // 0x3XNN, skips the next instruction if VX = NN;
+            printf("[OK] 0x%X: 3NNN\n", op);
             if (V[X] ==  (op_nibbles & 0x0FF)) {
                 PC += 2;
             }
@@ -280,6 +281,7 @@ void emulate_cycle(void) {
             break;
         case 0x4:
             // 0x4XNN, skips the instruction if VX != NN;
+            printf("[OK] 0x%X: 4NNN\n", op);
             if (V[X] !=  (op_nibbles & 0x0FF)) {
                 PC += 2;
             }
@@ -287,6 +289,7 @@ void emulate_cycle(void) {
             break;
         case 0x5:
             // 0x5XY0, skip the next instruction if VX = VY
+            printf("[OK] 0x%X: 5XY0\n", op);
             if (V[X] == V[Y]) {
                 PC += 2;
             }
@@ -294,10 +297,12 @@ void emulate_cycle(void) {
             break;
         case 0x6:
             // 0x6XNN, sets V[X] to NN
+            printf("[OK] 0x%X: 6NNN\n", op);
             V[X] = (op_nibbles & 0x0FF);
             PC += 2;
             break;
         case 0x7:
+            printf("[OK] 0x%X: 7NNN\n", op);
             // 0x7XNN, sets VX to value at VX + NN;
             V[X] += (op_nibbles & 0x0FF);
             PC += 2;
@@ -308,21 +313,25 @@ void emulate_cycle(void) {
             switch (op_nibbles & 0x00F) {
                 case 0x0:
                     // 0x8XY0: Set VX to VY 
+                    printf("[OK] 0x%X: 8XY0\n", op);
                     V[X] = V[Y];
                     PC += 2;
                     break;
                 case 0x1:
                     // 0x8XY1: set VX to VX OR VY; do bitwise OR on the registers
+                    printf("[OK] 0x%X: 8XY1\n", op);
                     V[X] = V[X] | V[Y];
                     PC += 2;
                     break;
                 case 0x2:
                     // 0x8XY2: set VX to VX AND VY; do bitwise AND;
+                    printf("[OK] 0x%X: 8XY2\n", op);
                     V[X] = V[X] & V[Y];
                     PC += 2;
                     break;
                 case 0x3:
                     // 0x8XY3: set VX to VX XOR VY; do bitwise XOR;
+                    printf("[OK] 0x%X: 8XY3\n", op);
                     V[X] = V[X] ^ V[Y];
                     PC += 2;
                     break;
@@ -330,6 +339,7 @@ void emulate_cycle(void) {
                     // 0x8XY4: set VX to VX + VY; use VF as carry if result is more than 255;
                     // VF set to 1 in that case, otherwise 0 and only lowest 8 bits are 
                     // kept and stored in VX;
+                    printf("[OK] 0x%X: 8XY4\n", op);
                     short reg_sum = V[X] + V[Y];
                     if (reg_sum > 255) {
                         V[0xF] = 1;
@@ -346,6 +356,7 @@ void emulate_cycle(void) {
                 case 0x5: 
                     // 0x8XY5: Set VX to VX - VY, VF set to NOT Borrow;
                     // if VX > VY then VF = 1, 0 otherwise;
+                    printf("[OK] 0x%X: 8XY5\n", op);
                     if (V[X] > V[Y]) {
                         V[0xF] = 1;
                     } else {
@@ -359,6 +370,7 @@ void emulate_cycle(void) {
                 case 0x6:
                     // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
                     // otherise it's set to 0, then VX gets divided by 2;
+                    printf("[OK] 0x%X: 8XY6\n", op);
                     if (V[X] & 0b00000001) { // Bit mask to see if last bit is 1;
                         V[0xF] = 1;
                     } else {
@@ -369,6 +381,7 @@ void emulate_cycle(void) {
                     break;
                 case 0x7:
                     // 0x8XY7: set VX to VY - VX, if VY > VX then VF = 1; 0 otherwise
+                    printf("[OK] 0x%X: 8XY7\n", op);
                     if (V[Y] > V[X]) {
                         V[0xF] = 1;
                     } else {
@@ -380,6 +393,7 @@ void emulate_cycle(void) {
                 case 0xE:
                     // 0x8XYE: If the most significant bit of VX is 1, then VF is set to 1
                     // otherwise it's set to 0, then V[X] is multiplied by 2;
+                    printf("[OK] 0x%X: 8XYE\n", op);
                     if (V[X] & 0b10000000) {
                         V[0xF] = 1;
                     } else {
@@ -395,6 +409,7 @@ void emulate_cycle(void) {
             break;
         case 0x9:
             // 0x9XY0: Skip the next instruction if VX != VY;
+            printf("[OK] 0x%X: 9XY0\n", op);
             if (((op_nibbles & 0x00F) == 0) && V[X] != V[Y]) {
                 PC += 2;
             }
@@ -402,16 +417,19 @@ void emulate_cycle(void) {
             break;
         case 0xA:
             // 0xANNN: Set special register I to NNN;
+            printf("[OK] 0x%X: ANNN\n", op);
             I = op_nibbles;
             PC += 2;
             break;
         case 0xB:
             // 0xBNNN: set PC to NNN + V0;
+            printf("[OK] 0x%X: BNNN\n", op);
             PC = V[0] + op_nibbles;
             break;
         case 0xC:
             // 0xCXNN: Set V[X] to a random byte and NN, ie generate a rand int
             // from 0 to 255 and then do bitwise AND with NN and store it in V[X]
+            printf("[OK] 0x%X: CXNN\n", op);
             srand(time(NULL));
             int r = rand() % 255;
             V[X] = r & (op_nibbles & 0x0FF);
@@ -425,6 +443,7 @@ void emulate_cycle(void) {
             
             // Start by isolating the last nibble since that will be the size of the sprite
             // being displayed.
+            printf("[OK] 0x%X: DXYN\n", op);
             int n_bytes = op_nibbles & 0x00F;
             // Get X and Y coords from VX and VY;
             int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
@@ -456,6 +475,7 @@ void emulate_cycle(void) {
             switch (op_nibbles & 0x0FF) {
                 case 0x9E:
                     // 0xEX9E: skip instruction if the key with the value of VX is pressed
+                    printf("[OK] 0x%X: EX9E\n", op);
                     if (keypad[V[X]]) {
                         PC += 2;
                     }
@@ -463,6 +483,7 @@ void emulate_cycle(void) {
                     break;
                 case 0xA1:
                     // 0xEXA1: skip instruction if key with value of VX is NOT pressed
+                    printf("[OK] 0x%X: EXA1\n", op);
                     if (!keypad[V[X]]) {
                         PC += 2;
                     }
@@ -478,6 +499,7 @@ void emulate_cycle(void) {
             switch(op_nibbles & 0x0FF) {
                 case 0x07:
                     // 0xFX07: set VX to the value of the delay timer;
+                    printf("[OK] 0x%X: FX07\n", op);
                     V[X] = delay_timer;
                     PC += 2;
                     break;
@@ -485,6 +507,7 @@ void emulate_cycle(void) {
                     // 0xFX0A: Wait for a keypress, then store the value in VX
                     // All execution should stop until a key is pressed. Done by not incrementing
                     // PC until a keypress is found.
+                    printf("[OK] 0x%X: FX0A\n", op);
                     for (int i = 0; i < 16; i++) {
                         if (keypad[i]) {
                             V[X] = i;
@@ -495,6 +518,7 @@ void emulate_cycle(void) {
                     break;
                 case 0x15:
                     // 0xFX15: opposite of 0xFX07 where this time delay timer is set to value of VX;
+                    printf("[OK] 0x%X: FX15\n", op);
                     delay_timer = V[X];
                     PC += 2;
                     break;
