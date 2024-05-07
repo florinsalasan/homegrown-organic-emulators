@@ -468,6 +468,9 @@ void emulate_cycle(void) {
                     display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
                 }
             }
+            printf("right before printing display from DXYN");
+            print_arrays(display, (sizeof(display)/sizeof(display[0])));
+            printf("right after printing display from DXYN");
             PC += 2;
         }   break;
         case 0xE:
@@ -581,4 +584,11 @@ int main(int argc, char** argv) {
     stop_display();
     return 0;
 
+}
+
+
+void print_arrays(unsigned char* given_array, int array_size){
+    for (int i = 0; i < array_size; ++i){
+        printf("%dth idx value: %d\n", i, given_array[i]);
+    }
 }
