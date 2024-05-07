@@ -471,6 +471,7 @@ void emulate_cycle(void) {
             printf("right before printing display from DXYN");
             print_arrays(display, (sizeof(display)/sizeof(display[0])));
             printf("right after printing display from DXYN");
+            draw_on_screen(display);
             PC += 2;
         }   break;
         case 0xE:
