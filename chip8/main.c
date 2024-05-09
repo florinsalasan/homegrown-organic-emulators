@@ -468,9 +468,9 @@ void emulate_cycle(void) {
                     }
                 }
             }
-            printf("right before printing display from DXYN");
-            print_arrays(display, (sizeof(display)/sizeof(display[0])));
-            printf("right after printing display from DXYN");
+            // printf("right before printing display from DXYN");
+            // print_arrays(display, (sizeof(display)/sizeof(display[0])));
+            // printf("right after printing display from DXYN");
             draw_on_screen(display);
             PC += 2;
         }   break;
@@ -526,6 +526,29 @@ void emulate_cycle(void) {
                     delay_timer = V[X];
                     PC += 2;
                     break;
+                case 0x18: 
+                    // 0xFX18: set sound timer to VX
+                    printf("[OK] 0x%X: FX18\n", op);
+                    sound_timer = V[X];
+                    PC += 2;
+                    break;
+                case 0x1E:
+                    // 0xFX1E: set I = I + VX;
+                    printf("[OK] 0x%X: FX1E\n", op);
+                    I += V[X];
+                    PC += 2;
+                    break;
+                case 0x29:
+                    printf("[OK] 0x%X: FX29\n", op);
+                    // 0xFX29: set I = location of sprite for digit VX
+                    // TODO: Don't think this is right.
+                    I = V[X];
+                    PC += 2;
+                    break;
+                case 0x33:
+                    // 0xFX33: Store BCD representation of VX in mem locations I, I + 1, I + 2;
+                    // take the decimal value of VX, placing hundreds digit at I, tens at I + 1, ones at I + 2;
+                    
             }
             break;
         default:
