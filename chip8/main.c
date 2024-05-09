@@ -545,10 +545,38 @@ void emulate_cycle(void) {
                     I = V[X];
                     PC += 2;
                     break;
-                case 0x33:
+                case 0x33: {
                     // 0xFX33: Store BCD representation of VX in mem locations I, I + 1, I + 2;
                     // take the decimal value of VX, placing hundreds digit at I, tens at I + 1, ones at I + 2;
+                    printf("[OK] 0x%X: FX33\n", op);
+                    unsigned char vx_value = V[X];
+                    unsigned char hundreds = vx_value / 100;
+                    unsigned char tens = (vx_value % 100) / 10;
+                    unsigned char ones = vx_value % 10;
+
+                    memory[I] = hundreds;
+                    memory[I + 1] = tens;
+                    memory[I + 2] = ones;
+
+                    PC += 2;
                     
+                } break; 
+                case 0x55:
+                    // 0xFX55: Store registers V0-VX in memory start at location I;
+                    // Copy the values from the registers into memory starting at I
+                    for (int i = 0; i < X; i++) {
+                        memory[I + i] = V[i];
+                    }
+                    PC += 2;
+                    break;
+                case 0x65:
+                    // 0xFX65: Read registers V0-VX from memory starting at location I;
+                    // Read values from memory into the registers.
+                    for (int i = 0; i < X; i++) {
+                        V[i] = memory[I + i];
+                    }
+                    PC += 2;
+                    break;
             }
             break;
         default:
