@@ -270,11 +270,12 @@ void emulate_cycle(void) {
             stack_idx++;
             stack[stack_idx] = PC;
             PC = op_nibbles;
+            printf("PC: 0x%X; stack_idx: %d; value @ stack_idx: 0x%X\n", PC, stack_idx, stack[stack_idx]);
             break;
         case 0x3:
             // 0x3XNN, skips the next instruction if VX = NN;
             printf("[OK] 0x%X: 3NNN\n", op);
-            if (V[X] ==  (op_nibbles & 0x0FF)) {
+            if (V[X] == (op_nibbles & 0x0FF) >> 4) {
                 PC += 2;
             }
             PC += 2;
