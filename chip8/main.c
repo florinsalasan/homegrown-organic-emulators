@@ -243,7 +243,7 @@ void emulate_cycle(void) {
                     break;
                 case 0x0EE: // Return from subroutine setting PC to address at top of 
                     // stack, then subtracting one from the stack pointer.
-                    printf("[OK] 0x%X: 00EE\n", op);
+                    printf("[OK] 0x%X: 00EE\n", op); // Prints op just as EE rather than 00EE
                     // Get top of stack
                     PC = stack[stack_idx];
                     stack_idx--;
@@ -564,6 +564,7 @@ void emulate_cycle(void) {
                 case 0x55:
                     // 0xFX55: Store registers V0-VX in memory start at location I;
                     // Copy the values from the registers into memory starting at I
+                    printf("[OK] 0x%X: FX55\n", op);
                     for (int i = 0; i < X; i++) {
                         memory[I + i] = V[i];
                     }
@@ -572,6 +573,7 @@ void emulate_cycle(void) {
                 case 0x65:
                     // 0xFX65: Read registers V0-VX from memory starting at location I;
                     // Read values from memory into the registers.
+                    printf("[OK] 0x%X: FX65\n", op);
                     for (int i = 0; i < X; i++) {
                         V[i] = memory[I + i];
                     }
@@ -582,7 +584,6 @@ void emulate_cycle(void) {
         default:
             error("[ERROR] Unknown opcode encountered: 0x%X\n", op);
     }
-
 }
 
 ///////////////////////////////
