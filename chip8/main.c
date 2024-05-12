@@ -585,6 +585,9 @@ void emulate_cycle(void) {
         default:
             error("[ERROR] Unknown opcode encountered: 0x%X\n", op);
     }
+    // Decrement the timers if needed:
+    if (delay_timer > 0) delay_timer -= 1;
+    if (sound_timer > 0) sound_timer -= 1;
 }
 
 ///////////////////////////////
