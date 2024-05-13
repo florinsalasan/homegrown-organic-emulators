@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -275,7 +274,7 @@ void emulate_cycle(void) {
         case 0x3:
             // 0x3XNN, skips the next instruction if VX = NN;
             printf("[OK] 0x%X: 3NNN\n", op);
-            if (V[X] == (op_nibbles & 0x0FF) >> 4) {
+            if (V[X] == (op_nibbles & 0x0FF)) {
                 PC += 2;
             }
             PC += 2;
