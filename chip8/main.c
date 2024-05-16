@@ -105,6 +105,9 @@ unsigned char draw_flag = 0;
 
 void init_cpu(void) {
 
+    // Set a seed for the random functions in the rest of the interpreter.
+    srand((unsigned int)time(NULL));
+
     // load the fontset into memory
     memcpy(memory, fontset, sizeof(fontset));
 
@@ -243,16 +246,17 @@ void emulate_cycle(void) {
                 case 0x0EE: // Return from subroutine setting PC to address at top of 
                     // stack, then subtracting one from the stack pointer.
                     printf("[OK] 0x%X: 00EE\n", op); // Prints op just as EE rather than 00EE
+                    // why does this not print as expected??
                     // Get top of stack
                     PC = stack[stack_idx];
                     stack_idx--;
+                    PC += 2;
                     break;
                 // Remaining cases for 0x0NNN are made to jump to a machine code routine
                 // at NNN, according to one of the guides I'm following, this instruction
                 // does not get implemented in modern interpreters.
                 default:
                     printf("[ERROR] these instructions shouldn't be getting called, %X\n", op);
-                    PC += 2;
                     break;
             }
             break;
