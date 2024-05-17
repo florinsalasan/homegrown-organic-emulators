@@ -558,9 +558,17 @@ void emulate_cycle(void) {
                     unsigned char tens = (vx_value % 100) / 10;
                     unsigned char ones = vx_value % 10;
 
+                    printf("VX value: %d\n X value: %X\n", vx_value, X);
                     memory[I] = hundreds;
                     memory[I + 1] = tens;
                     memory[I + 2] = ones;
+                    printf("hundreds value: %d\n", hundreds);
+                    printf("value at mem[I] (hundreds): %d\n", memory[I]);
+                    printf("tens value: %d\n", tens);
+                    printf("value at mem[I + 1] (tens): %d\n", memory[I + 1]);
+                    printf("ones value: %d\n", ones);
+                    printf("value at mem[I + 2] (ones): %d\n", memory[I + 2]);
+
 
                     PC += 2;
                     
@@ -569,8 +577,11 @@ void emulate_cycle(void) {
                     // 0xFX55: Store registers V0-VX in memory start at location I;
                     // Copy the values from the registers into memory starting at I
                     printf("[OK] 0x%X: FX55\n", op);
-                    for (int i = 0; i < X; i++) {
+                    printf("value of X is: %d\n", X);
+                    for (int i = 0; i <= X; i++) {
                         memory[I + i] = V[i];
+                        printf("value of i is: %d\n", i);
+                        printf("value of V[i] is: %d\n value of memory[I + i] is: %d\n", V[i], memory[I + i]);
                     }
                     PC += 2;
                     break;
@@ -578,7 +589,7 @@ void emulate_cycle(void) {
                     // 0xFX65: Read registers V0-VX from memory starting at location I;
                     // Read values from memory into the registers.
                     printf("[OK] 0x%X: FX65\n", op);
-                    for (int i = 0; i < X; i++) {
+                    for (int i = 0; i <= X; i++) {
                         V[i] = memory[I + i];
                     }
                     PC += 2;
