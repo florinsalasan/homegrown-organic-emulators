@@ -151,6 +151,9 @@ void init_sdl_display(void) {
 }
 
 void draw_on_screen(unsigned char* display) {
+
+    // TODO: Fix going offscreen behaviour
+
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); 
 
     SDL_RenderClear(renderer);
