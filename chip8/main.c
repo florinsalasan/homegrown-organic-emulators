@@ -471,7 +471,9 @@ void emulate_cycle(void) {
                             V[0xF] = 1;
                         }
                         // Set display with XOR 
-                        display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
+                        if ((V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH) < SCREEN_HEIGHT * SCREEN_WIDTH)) {
+                            display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
+                        }
                     }
                 }
             }
