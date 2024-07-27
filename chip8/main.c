@@ -65,7 +65,7 @@ unsigned char memory[4096] = {0};
 // Registers, CHIP-8 used 16 general purpose 8-bit registers, referred to 
 // as VX where X is a hexadecimal digit, so V0-VF but ours will be stored in 
 // an array and can be indexed after, use unsigned chars since they're 8-bits
-unsigned char V[16] = {0};
+uint8_t V[16] = {0};
 
 // Special 16-bit register 'I' that is the index register which points at
 // locations in memory, use short since that is 16-bits
@@ -98,6 +98,7 @@ unsigned char sound_timer = 0;
 // additional flag defined to make updating display simpler
 // display flag
 unsigned char draw_flag = 0;
+unsigned char sound_flag = 0;
 
 //////////////////////////////////
 // CHIP-8 Functionality:        //
@@ -347,16 +348,19 @@ void emulate_cycle(void) {
                     // VF set to 1 in that case, otherwise 0 and only lowest 8 bits are 
                     // kept and stored in VX;
                     printf("[OK] 0x%X: 8XY4\n", op);
-                    short reg_sum = V[X] + V[Y];
-                    if (reg_sum > 255) {
-                        V[0xF] = 1;
-                    } else {
-                        V[0xF] = 0;
-                    }
+                    // short reg_sum = V[X] + V[Y];
+                    // if (reg_sum > 255) {
+                        // V[0xF] = 1;
+                    // } else {
+                        // V[0xF] = 0;
+                    // }
                     // Keep the lowest 8-bits of the sum only by bitwise and with the 
                     // equivalent of the last two bits;
-                    reg_sum &= 0xFF;
-                    V[X] = (unsigned char)reg_sum;
+                    // reg_sum &= 0xFF;
+                    // V[X] = (unsigned char)reg_sum;
+                    V[0xF] = ((V[X] + V[Y]) > 255);
+                    V[X] = V[X] + V[Y];
+
                     PC += 2;
                     break;
                 }
