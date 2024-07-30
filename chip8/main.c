@@ -348,18 +348,17 @@ void emulate_cycle(void) {
                     // VF set to 1 in that case, otherwise 0 and only lowest 8 bits are 
                     // kept and stored in VX;
                     printf("[OK] 0x%X: 8XY4\n", op);
-                    // short reg_sum = V[X] + V[Y];
-                    // if (reg_sum > 255) {
-                        // V[0xF] = 1;
-                    // } else {
-                        // V[0xF] = 0;
-                    // }
+                    uint16_t reg_sum = V[X] + V[Y];
+                    if (reg_sum & 0xFF00) {
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
                     // Keep the lowest 8-bits of the sum only by bitwise and with the 
-                    // equivalent of the last two bits;
+                    // equivalent of the last two bytes;
                     // reg_sum &= 0xFF;
                     // V[X] = (unsigned char)reg_sum;
-                    V[0xF] = ((V[X] + V[Y]) > 255);
-                    V[X] = V[X] + V[Y];
+                    V[X] = reg_sum & 0xFF;
 
                     PC += 2;
                     break;
