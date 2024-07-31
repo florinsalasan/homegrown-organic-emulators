@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -22,10 +23,10 @@ SDL_Window* screen;
 SDL_Renderer* renderer;
 
 SDL_Scancode keymappings[16] = {
-    SDL_SCANCODE_1, SDL_SCANCODE_2, SDL_SCANCODE_3, SDL_SCANCODE_4,
-    SDL_SCANCODE_Q, SDL_SCANCODE_W, SDL_SCANCODE_E, SDL_SCANCODE_R,
-    SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_F,
-    SDL_SCANCODE_Z, SDL_SCANCODE_X, SDL_SCANCODE_C, SDL_SCANCODE_V,
+    SDL_SCANCODE_X, SDL_SCANCODE_1, SDL_SCANCODE_2, SDL_SCANCODE_3,
+    SDL_SCANCODE_Q, SDL_SCANCODE_W, SDL_SCANCODE_E, SDL_SCANCODE_A,
+    SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_Z, SDL_SCANCODE_C,
+    SDL_SCANCODE_4, SDL_SCANCODE_R, SDL_SCANCODE_F, SDL_SCANCODE_V,
 };
 
 // Font:
@@ -60,7 +61,7 @@ unsigned char fontset[80] = {
 // section of Tobias Langhoff's CHIP-8 Guide.
 
 // Memory
-unsigned char memory[4096] = {0};
+uint8_t memory[4096] = {0};
 
 // Registers, CHIP-8 used 16 general purpose 8-bit registers, referred to 
 // as VX where X is a hexadecimal digit, so V0-VF but ours will be stored in 
@@ -69,36 +70,36 @@ uint8_t V[16] = {0};
 
 // Special 16-bit register 'I' that is the index register which points at
 // locations in memory, use short since that is 16-bits
-unsigned short I = 0;
+uint16_t I = 0;
 
 // The program counter 'PC' which points at the current instruction that is in memory
 // reminder that in memory that program space starts at 0x200
-unsigned short PC = 0x200;
+uint16_t PC = 0x200;
 
 // The stack, an array of 16-bit addresses, most original interpreters apparently
 // had very limited space, with some limiting it to 2 addresses even, here I'll
 // take a very excessive implementation of eight 16-bit addresses.
-unsigned short stack[16] = {0};
+uint16_t stack[16] = {0};
 
 // points to the top of the stack so to speak.
-unsigned short stack_idx = 0;
+uint8_t stack_idx = 0;
 
 // the keypad:
-unsigned char keypad[16] = {0};
+uint8_t keypad[16] = {0};
 
 // display of height 64, and width of 32, stored in a 1D array
-unsigned char display[SCREEN_WIDTH * SCREEN_HEIGHT] = {0};
+uint8_t display[SCREEN_WIDTH * SCREEN_HEIGHT] = {0};
 
 // delay timer
-unsigned char delay_timer = 0;
+uint8_t delay_timer = 0;
 
 // sound timer
-unsigned char sound_timer = 0;
+uint8_t sound_timer = 0;
 
 // additional flag defined to make updating display simpler
 // display flag
-unsigned char draw_flag = 0;
-unsigned char sound_flag = 0;
+uint8_t draw_flag = 0;
+uint8_t sound_flag = 0;
 
 //////////////////////////////////
 // CHIP-8 Functionality:        //
@@ -218,7 +219,7 @@ void stop_display(void) {
 // controlling the emulated system.
 void emulate_cycle(void) {
 
-    unsigned short op = memory[PC] << 8 | memory[PC + 1];
+    uint16_t op = memory[PC] << 8 | memory[PC + 1];
     printf("opcode: %X\n", op);
     int opcode_type = (op & 0xF000) >> 12;
 
@@ -232,8 +233,8 @@ void emulate_cycle(void) {
     // NN: second byte (3rd and 4th nibbles), an 8-bit immediate number
     // NNN: 2nd, 3rd, 4th nibbles, 12-bit immediate mem address.
 
-    unsigned short X = (op & 0x0F00) >> 8;
-    unsigned short Y = (op & 0x00F0) >> 4;
+    uint8_t X = (op & 0x0F00) >> 8;
+    uint8_t Y = (op & 0x00F0) >> 4;
 
     printf("opcode_type: %X, op_nibbles: X: %X, Y: %X\n", opcode_type, X, Y);
 
@@ -329,18 +330,21 @@ void emulate_cycle(void) {
                     // 0x8XY1: set VX to VX OR VY; do bitwise OR on the registers
                     printf("[OK] 0x%X: 8XY1\n", op);
                     V[X] = V[X] | V[Y];
+                    V[15] = 0;
                     PC += 2;
                     break;
                 case 0x2:
                     // 0x8XY2: set VX to VX AND VY; do bitwise AND;
                     printf("[OK] 0x%X: 8XY2\n", op);
                     V[X] = V[X] & V[Y];
+                    V[15] = 0;
                     PC += 2;
                     break;
                 case 0x3:
                     // 0x8XY3: set VX to VX XOR VY; do bitwise XOR;
                     printf("[OK] 0x%X: 8XY3\n", op);
                     V[X] = V[X] ^ V[Y];
+                    V[15] = 0;
                     PC += 2;
                     break;
                 case 0x4: { // Include the braces to be able to define reg_sum
@@ -348,17 +352,22 @@ void emulate_cycle(void) {
                     // VF set to 1 in that case, otherwise 0 and only lowest 8 bits are 
                     // kept and stored in VX;
                     printf("[OK] 0x%X: 8XY4\n", op);
-                    uint16_t reg_sum = V[X] + V[Y];
-                    if (reg_sum & 0xFF00) {
+                    uint16_t sum = V[X] + V[Y];
+                    if (sum > 255) {
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
-                    // Keep the lowest 8-bits of the sum only by bitwise and with the 
-                    // equivalent of the last two bytes;
-                    // reg_sum &= 0xFF;
-                    // V[X] = (unsigned char)reg_sum;
-                    V[X] = reg_sum & 0xFF;
+                    // Do bitwise and to keep the lower 8 bits
+                    V[X] = sum & 0xFF;
+
+                    if (X == 0xF) {
+                        if (sum > 255) {
+                            V[0xF] = 1;
+                        } else {
+                            V[0xF] = 0;
+                        }
+                    }
 
                     PC += 2;
                     break;
@@ -367,14 +376,18 @@ void emulate_cycle(void) {
                     // 0x8XY5: Set VX to VX - VY, VF set to NOT Borrow;
                     // if VX > VY then VF = 1, 0 otherwise;
                     printf("[OK] 0x%X: 8XY5\n", op);
-                    if (V[X] > V[Y]) {
+                    uint8_t diff = V[X] - V[Y];
+
+                    if (V[X] >= V[Y]) {
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
-                    // There should probably be better handling here, unsure of 
-                    // the exact implementation needed for this instruction
-                    V[X] = V[X] - V[Y];
+
+                    if (X != 0xF) {
+                        V[X] = diff;
+                    }
+
                     PC += 2;
                     break;
                 case 0x6:
@@ -392,12 +405,18 @@ void emulate_cycle(void) {
                 case 0x7:
                     // 0x8XY7: set VX to VY - VX, if VY > VX then VF = 1; 0 otherwise
                     printf("[OK] 0x%X: 8XY7\n", op);
-                    if (V[Y] > V[X]) {
+                    uint8_t diff2 = V[Y] - V[X];
+
+                    if (V[Y] >= V[X]) {
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
-                    V[X] = V[Y] - V[X];
+
+                    if (X != 0xF) {
+                        V[X] = diff2;
+                    }
+
                     PC += 2;
                     break;
                 case 0xE:
@@ -591,6 +610,7 @@ void emulate_cycle(void) {
                         printf("value of i is: %d\n", i);
                         printf("value of V[i] is: %d\n value of memory[I + i] is: %d\n", V[i], memory[I + i]);
                     }
+                    I += 15;
                     PC += 2;
                     break;
                 case 0x65:
@@ -600,6 +620,7 @@ void emulate_cycle(void) {
                     for (int i = 0; i <= X; i++) {
                         V[i] = memory[I + i];
                     }
+                    I += 15;
                     PC += 2;
                     break;
             }
@@ -618,7 +639,7 @@ void emulate_cycle(void) {
 
 int main(int argc, char** argv) {
     if (argc != 3) {
-        perror("Usage: emulator rom.ch8 CYCLE_LEN");
+        perror("Usage: emulator CYCLE_LEN rom.ch8");
         return 1;
     }
 
@@ -628,8 +649,8 @@ int main(int argc, char** argv) {
 
     char* ptr;
 
-    char* rom = argv[1];
-    int CYCLE_LEN = strtol(argv[2], &ptr, 10); // Recommended is around ~1400
+    char* rom = argv[2];
+    int CYCLE_LEN = strtol(argv[1], &ptr, 10); // Recommended is around ~1400
     printf("[PENDING] Loading rom %s... \n", rom);
     int err_check_load_rom = load_rom(rom);
     if (err_check_load_rom) {
