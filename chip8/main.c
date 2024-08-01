@@ -391,15 +391,17 @@ void emulate_cycle(void) {
                     PC += 2;
                     break;
                 case 0x6:
-                    // 0x8XY6: If the least significant bit of VX is 1, then VF is set to 1,
-                    // otherise it's set to 0, then VX gets divided by 2;
+                    // Place the value of V[Y] into V[X], shift the value in V[X] 1
+                    // bit to the right, store the shifted bit into V[F]
                     printf("[OK] 0x%X: 8XY6\n", op);
-                    if (V[X] & 0b00000001) { // Bit mask to see if last bit is 1;
+                    V[X] = V[Y];
+                    int shifted_bit = V[X] & 0b00000001;
+                    V[X] /= 2;
+                    if (shifted_bit) { // Bit mask to see if last bit is 1;
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
-                    V[X] /= 2;
                     PC += 2;
                     break;
                 case 0x7:
@@ -423,12 +425,14 @@ void emulate_cycle(void) {
                     // 0x8XYE: If the most significant bit of VX is 1, then VF is set to 1
                     // otherwise it's set to 0, then V[X] is multiplied by 2;
                     printf("[OK] 0x%X: 8XYE\n", op);
-                    if (V[X] & 0b10000000) {
+                    V[X] = V[Y];
+                    int shifted_bit2 = V[X] & 0b10000000;
+                    V[X] *= 2;
+                    if (shifted_bit2) {
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
-                    V[X] *= 2;
                     PC += 2;
                     break;
                 default:
