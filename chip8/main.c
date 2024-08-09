@@ -479,9 +479,10 @@ void emulate_cycle(void) {
             printf("[OK] 0x%X: DXYN\n", op);
             int n_bytes = op_nibbles & 0x00F;
             // Get X and Y coords from VX and VY;
-            int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
-            int y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
+            int x_coord = V[X]; // modulo to 'wrap' around in case sprite is too big
+            int y_coord = V[Y]; // same reasoning for modulo here.
             int combined_display_idx = x_coord + (y_coord * SCREEN_WIDTH); // display is a 1D array
+            unsigned short curr_px;
             // reset V[0xF] to 0 before beginning
             V[0xF] = 0;
             // Draw the sprite
@@ -489,29 +490,28 @@ void emulate_cycle(void) {
             // inner loop is over the width, each row of the sprite is 8 bits since it is represented
             // by one byte, at least that's my understanding of it.
             for (int nth_byte = 0; nth_byte < n_bytes; nth_byte++) {
-                unsigned short curr_px = memory[I + nth_byte];
+                curr_px = memory[I + nth_byte];
                 // loop over the bits from the byte grabbed earlier;
                 for (int nth_bit = 0; nth_bit < 8; nth_bit++) {
                     // What was this check doing??? Going back to read something months old sucks
                     if ((curr_px & (0x80 >> nth_bit)) != 0) {
                     // if (x_coord + nth_bit < SCREEN_WIDTH && y_coord + nth_byte < SCREEN_HEIGHT) {
                         // Check if there is a pixel that is already on that will be switched off
-                        if (display[V[X] + nth_bit + (((V[Y] + nth_byte) * SCREEN_WIDTH))] == 1) {
+                        if (display[(X + nth_bit + ((Y + nth_byte) * SCREEN_WIDTH))] == 1) {
                             // Set the collision flag to 1 if theres a pixel already on that will
                             // be shut off.
                             V[0xF] = 1;
                         }
                         // Set display with XOR, what if it needs to clip? There should almost certainly
                         // require a modulo operation
-                        if ((V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH) < SCREEN_HEIGHT * SCREEN_WIDTH)) {
-                            display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
-                        }
+                        display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
                     }
                 }
             }
             // printf("right before printing display from DXYN");
             // print_arrays(display, (sizeof(display)/sizeof(display[0])));
             // printf("right after printing display from DXYN");
+            draw_flag = true;
             draw_on_screen(display);
             PC += 2;
         }   break;
