@@ -101,6 +101,9 @@ uint8_t sound_timer = 0;
 uint8_t draw_flag = 0;
 uint8_t sound_flag = 0;
 
+bool key_found = false;
+uint8_t key_pressed = 255;
+
 //////////////////////////////////
 // CHIP-8 Functionality:        //
 //////////////////////////////////
@@ -511,7 +514,6 @@ void emulate_cycle(void) {
             // printf("right before printing display from DXYN");
             // print_arrays(display, (sizeof(display)/sizeof(display[0])));
             // printf("right after printing display from DXYN");
-            draw_flag = true;
             draw_on_screen(display);
             PC += 2;
         }   break;
@@ -553,13 +555,24 @@ void emulate_cycle(void) {
                     // All execution should stop until a key is pressed. Done by not incrementing
                     // PC until a keypress is found.
                     printf("[OK] 0x%X: FX0A\n", op);
+
+                    if (key_found && (key_pressed != 255)) {
+                        if (!keypad[key_pressed]) {
+                            key_found = false;
+                            key_pressed = 255;
+                            PC += 2;
+                        }
+                    }
+
                     for (int i = 0; i < 16; i++) {
                         if (keypad[i]) {
                             V[X] = i;
-                            PC += 2;
+                            key_found = true;
+                            key_pressed = i;
                             break;
                         }
                     }
+
                     break;
                 case 0x15:
                     // 0xFX15: opposite of 0xFX07 where this time delay timer is set to value of VX;

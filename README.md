@@ -5,6 +5,9 @@
 Yes technically not an emulator, but skills I learn accomplishing this should
 hopefully help with the other projects I want to work on afterwards.
 
+This is mostly in a working state, some things are wrong with the display that I can't
+seem to track down, I also think I broke collision in a tank game when trying to fix some things
+
 ## The 8080
 
 This is the first emulator that I was going to work on after I had found an overview
@@ -21,4 +24,4 @@ after I get a CHIP-8 interpreter up and running.
 ## TODO:
 
 - [ ] Pretty much everything, 8080 and 6502 are nowhere near running and chip-8 still requires instructions to be implemented
-- [ ] chip-8 interpreter has instructions implemented, needs to be debugged, some things like timers & keypad need to be double checked.
+- [x] chip-8 interpreter has instructions implemented, needs to be debugged, some things like timers & keypad need to be double checked.
