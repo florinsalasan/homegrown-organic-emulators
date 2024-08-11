@@ -482,8 +482,8 @@ void emulate_cycle(void) {
             printf("[OK] 0x%X: DXYN\n", op);
             int n_bytes = op_nibbles & 0x00F;
             // Get X and Y coords from VX and VY;
-            int x_coord = V[X]; // modulo to 'wrap' around in case sprite is too big
-            int y_coord = V[Y]; // same reasoning for modulo here.
+            int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
+            int y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
             int combined_display_idx = x_coord + (y_coord * SCREEN_WIDTH); // display is a 1D array
             unsigned short curr_px;
             // reset V[0xF] to 0 before beginning
@@ -500,14 +500,14 @@ void emulate_cycle(void) {
                     if ((curr_px & (0x80 >> nth_bit)) != 0) {
                     // if (x_coord + nth_bit < SCREEN_WIDTH && y_coord + nth_byte < SCREEN_HEIGHT) {
                         // Check if there is a pixel that is already on that will be switched off
-                        if (display[(X + nth_bit + ((Y + nth_byte) * SCREEN_WIDTH))] == 1) {
+                        if (display[(x_coord + nth_bit + ((y_coord + nth_byte) * SCREEN_WIDTH))] == 1) {
                             // Set the collision flag to 1 if theres a pixel already on that will
                             // be shut off.
                             V[0xF] = 1;
                         }
                         // Set display with XOR, what if it needs to clip? There should almost certainly
                         // require a modulo operation
-                        display[V[X] + nth_bit + ((V[Y] + nth_byte) * SCREEN_WIDTH)] ^= 1;
+                        display[x_coord + nth_bit + ((y_coord + nth_byte) * SCREEN_WIDTH)] ^= 1;
                     }
                 }
             }
