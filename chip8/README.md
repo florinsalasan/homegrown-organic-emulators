@@ -20,7 +20,7 @@ that I wanted to run for myself, SDL needs to be installed on your machine to us
 file might need to be adjusted based on the SDL installation. 
 
 ## TODO/BROKEN:
-- [ ] Display clipping gives err2 on the quirks test ROM from timendus' test suite
+- [x] Display clipping gives err2 on the quirks test ROM from timendus' test suite, now passes
 - [ ] Display wait gives slow on the same quirks test ROM
 - [ ] Display for numbers on certain ROMs are completely broken including pong scores and tank values for what I assume are angles and power
 - [x] FX0A instruction doesn't wait for the key to be released to continue

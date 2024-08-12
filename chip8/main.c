@@ -485,7 +485,7 @@ void emulate_cycle(void) {
             int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
             int y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
             int combined_display_idx = x_coord + (y_coord * SCREEN_WIDTH); // display is a 1D array
-            unsigned short curr_px;
+            unsigned short curr_sprite;
             // reset V[0xF] to 0 before beginning
             V[0xF] = 0;
             // Draw the sprite
@@ -493,12 +493,16 @@ void emulate_cycle(void) {
             // inner loop is over the width, each row of the sprite is 8 bits since it is represented
             // by one byte, at least that's my understanding of it.
             for (int nth_byte = 0; nth_byte < n_bytes; nth_byte++) {
-                curr_px = memory[I + nth_byte];
+                curr_sprite = memory[I + nth_byte];
                 // loop over the bits from the byte grabbed earlier;
+                if (nth_byte + y_coord >= SCREEN_HEIGHT) {
+                    continue;
+                }
                 for (int nth_bit = 0; nth_bit < 8; nth_bit++) {
-                    // What was this check doing??? Going back to read something months old sucks
-                    if ((curr_px & (0x80 >> nth_bit)) != 0) {
-                    // if (x_coord + nth_bit < SCREEN_WIDTH && y_coord + nth_byte < SCREEN_HEIGHT) {
+                    if ((curr_sprite & (0x80 >> nth_bit)) != 0) {
+                        if (nth_bit + x_coord >= SCREEN_WIDTH) {
+                            continue;
+                        }
                         // Check if there is a pixel that is already on that will be switched off
                         if (display[(x_coord + nth_bit + ((y_coord + nth_byte) * SCREEN_WIDTH))] == 1) {
                             // Set the collision flag to 1 if theres a pixel already on that will
