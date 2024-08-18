@@ -23,5 +23,6 @@ after I get a CHIP-8 interpreter up and running.
 
 ## TODO:
 
-- [ ] Pretty much everything, 8080 and 6502 are nowhere near running and chip-8 still requires instructions to be implemented
-- [x] chip-8 interpreter has instructions implemented, needs to be debugged, some things like timers & keypad need to be double checked.
+- [ ] Start working on either 6502 or 8080
+- [x] CHIP-8 interpreter has instructions implemented, needs to be debugged, some things like timers & keypad need to be double checked.
+- [x] CHIP-8 is now passing all tests I can throw at it other than display wait, so I'm considering this project finished, could add a changeable game speed again though
