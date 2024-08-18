@@ -518,7 +518,8 @@ void emulate_cycle(void) {
             // printf("right before printing display from DXYN");
             // print_arrays(display, (sizeof(display)/sizeof(display[0])));
             // printf("right after printing display from DXYN");
-            draw_on_screen(display);
+            // draw_on_screen(display);
+            draw_flag = 1;
             PC += 2;
         }   break;
         case 0xE:
@@ -655,9 +656,6 @@ void emulate_cycle(void) {
         default:
             error("[ERROR] Unknown opcode encountered: 0x%X\n", op);
     }
-    // Decrement the timers if needed:
-    if (delay_timer > 0) delay_timer -= 1;
-    if (sound_timer > 0) sound_timer -= 1;
 }
 
 ///////////////////////////////
@@ -665,8 +663,8 @@ void emulate_cycle(void) {
 ///////////////////////////////
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        perror("Usage: emulator CYCLE_LEN rom.ch8");
+    if (argc != 2) {
+        perror("Usage: emulator rom.ch8");
         return 1;
     }
 
@@ -676,8 +674,8 @@ int main(int argc, char** argv) {
 
     char* ptr;
 
-    char* rom = argv[2];
-    int CYCLE_LEN = strtol(argv[1], &ptr, 10); // Recommended is around ~1400
+    char* rom = argv[1];
+    // int CYCLE_LEN = strtol(argv[1], &ptr, 10); // Recommended is around ~1400
     printf("[PENDING] Loading rom %s... \n", rom);
     int err_check_load_rom = load_rom(rom);
     if (err_check_load_rom) {
@@ -694,17 +692,46 @@ int main(int argc, char** argv) {
     init_sdl_display();
     printf("[OK] Display initialized\n");
 
+    uint32_t start_tick;
+    uint32_t frame_time;
+    float time_per_cycle = 1000/200;
+    uint16_t instructions_this_cycle = 0;
+
     while (!should_quit) {
+        start_tick = SDL_GetTicks();
 
         emulate_cycle();
-        sdl_handler(keypad);
+        instructions_this_cycle++;
 
-        if (draw_flag) {
-            draw_on_screen(display);
+        if (instructions_this_cycle > 8) {
+            if (draw_flag) {
+                draw_on_screen(display);
+                draw_flag = 0;
+            }
+            instructions_this_cycle = 0;
+
+            // Decrement the timers if needed:
+            if (delay_timer > 0) {
+                delay_timer -= 1;
+                printf("delay_timer: %i\n", delay_timer);
+            }
+            if (sound_timer > 0){
+                sound_timer -= 1;
+                printf("sound_timer: %i\n", sound_timer);
+            }
         }
 
+        frame_time = SDL_GetTicks() - start_tick;
+        if (frame_time < time_per_cycle) {
+            SDL_Delay(time_per_cycle - frame_time);
+        }
+
+        sdl_handler(keypad);
+
+
         // sleep to match typical chip-8 clock speed
-        usleep(CYCLE_LEN);
+        int sixty_hz = 1667;
+        // usleep(sixty_hz);
 
     }
 
