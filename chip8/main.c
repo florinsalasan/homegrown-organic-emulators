@@ -30,7 +30,7 @@ SDL_Scancode keymappings[16] = {
 };
 
 // Font:
-unsigned char fontset[80] = {
+uint8_t fontset[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0,  // 0
     0x20, 0x60, 0x20, 0x20, 0x70,  // 1
     0xF0, 0x10, 0xF0, 0x80, 0xF0,  // 2
@@ -480,11 +480,11 @@ void emulate_cycle(void) {
             // Start by isolating the last nibble since that will be the size of the sprite
             // being displayed.
             printf("[OK] 0x%X: DXYN\n", op);
-            int n_bytes = op_nibbles & 0x00F;
+            uint8_t n_bytes = op_nibbles & 0x00F;
             // Get X and Y coords from VX and VY;
-            int x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
-            int y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
-            int combined_display_idx = x_coord + (y_coord * SCREEN_WIDTH); // display is a 1D array
+            uint8_t x_coord = V[X] % SCREEN_WIDTH; // modulo to 'wrap' around in case sprite is too big
+            uint8_t y_coord = V[Y] % SCREEN_HEIGHT; // same reasoning for modulo here.
+            uint8_t combined_display_idx = x_coord + (y_coord * SCREEN_WIDTH); // display is a 1D array
             unsigned short curr_sprite;
             // reset V[0xF] to 0 before beginning
             V[0xF] = 0;
@@ -601,7 +601,7 @@ void emulate_cycle(void) {
                     printf("[OK] 0x%X: FX29\n", op);
                     // 0xFX29: set I = location of sprite for digit VX
                     // TODO: Don't think this is right.
-                    I = V[X];
+                    I = V[X] * 5;
                     PC += 2;
                     break;
                 case 0x33: {
@@ -694,20 +694,20 @@ int main(int argc, char** argv) {
 
     uint32_t start_tick;
     uint32_t frame_time;
-    float time_per_cycle = 1000/200;
+    float time_per_cycle = 1000/500;
     uint16_t instructions_this_cycle = 0;
 
     while (!should_quit) {
         start_tick = SDL_GetTicks();
 
         emulate_cycle();
+        if (draw_flag) {
+            draw_on_screen(display);
+            draw_flag = 0;
+        }
         instructions_this_cycle++;
 
-        if (instructions_this_cycle > 8) {
-            if (draw_flag) {
-                draw_on_screen(display);
-                draw_flag = 0;
-            }
+        if (instructions_this_cycle > 12) {
             instructions_this_cycle = 0;
 
             // Decrement the timers if needed:
