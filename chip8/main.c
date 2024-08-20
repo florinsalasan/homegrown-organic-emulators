@@ -220,7 +220,7 @@ void stop_display(void) {
 // This is the function that will modify and use the emulated structures of a chip-8
 // system. This will be what fetches, decodes, and executes opcodes from the roms
 // controlling the emulated system.
-void emulate_cycle(void) {
+bool emulate_cycle(void) {
 
     uint16_t op = memory[PC] << 8 | memory[PC + 1];
     printf("opcode: %X\n", op);
@@ -521,6 +521,7 @@ void emulate_cycle(void) {
             // draw_on_screen(display);
             draw_flag = 1;
             PC += 2;
+            return true;
         }   break;
         case 0xE:
             // two different instructions, 0xEX9E and 0xEXA1;
@@ -656,6 +657,7 @@ void emulate_cycle(void) {
         default:
             error("[ERROR] Unknown opcode encountered: 0x%X\n", op);
     }
+    return false;
 }
 
 ///////////////////////////////
@@ -693,45 +695,43 @@ int main(int argc, char** argv) {
     printf("[OK] Display initialized\n");
 
     uint32_t start_tick;
-    uint32_t frame_time;
-    float time_per_cycle = 1000/500;
+    const uint32_t frame_time = 16;
+    float time_per_cycle = 1000/60;
     uint16_t instructions_this_cycle = 0;
+    uint32_t last_draw_time = 0;
+    uint32_t last_timer_update = 0;
 
     while (!should_quit) {
         start_tick = SDL_GetTicks();
+        bool draw_occurred = false;
 
-        emulate_cycle();
-        if (draw_flag) {
-            draw_on_screen(display);
-            draw_flag = 0;
-        }
-        instructions_this_cycle++;
-
-        if (instructions_this_cycle > 12) {
-            instructions_this_cycle = 0;
-
-            // Decrement the timers if needed:
-            if (delay_timer > 0) {
-                delay_timer -= 1;
-                printf("delay_timer: %i\n", delay_timer);
-            }
-            if (sound_timer > 0){
-                sound_timer -= 1;
-                printf("sound_timer: %i\n", sound_timer);
-            }
+        for (int i = 0; i < 16; i++) {
+            draw_occurred = emulate_cycle();
+            if (draw_occurred) break;
         }
 
-        frame_time = SDL_GetTicks() - start_tick;
-        if (frame_time < time_per_cycle) {
-            SDL_Delay(time_per_cycle - frame_time);
+        if (draw_occurred) {
+            uint32_t time_since_last_draw = start_tick - last_draw_time;
+            if (time_since_last_draw < frame_time) {
+                SDL_Delay(frame_time - time_since_last_draw);
+            }
+
+            if (draw_flag) {
+                draw_on_screen(display);
+                draw_flag = 0;
+            }
+            
+            last_draw_time = SDL_GetTicks();
+        }
+
+        // Decrement the timers if needed:
+        if (start_tick - last_timer_update >= time_per_cycle) {
+            if (delay_timer > 0) delay_timer-- ;
+            if (sound_timer > 0) sound_timer--;
+            last_timer_update = start_tick;
         }
 
         sdl_handler(keypad);
-
-
-        // sleep to match typical chip-8 clock speed
-        int sixty_hz = 1667;
-        // usleep(sixty_hz);
 
     }
 

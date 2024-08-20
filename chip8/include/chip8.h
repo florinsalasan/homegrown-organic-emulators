@@ -3,7 +3,7 @@
 
 void init_cpu(void);
 int load_rom(char* filename);
-void emulate_cycle(void);
+bool emulate_cycle(void);
 
 void init_sdl_display();
 void draw(unsigned char* display);
