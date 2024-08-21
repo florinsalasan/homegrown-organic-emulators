@@ -696,15 +696,13 @@ int main(int argc, char** argv) {
 
     uint32_t start_tick;
     const uint32_t frame_time = 16;
-    float time_per_cycle = 1000/500;
-    uint16_t instructions_this_cycle = 0;
     uint32_t last_draw_time = 0;
 
     while (!should_quit) {
         start_tick = SDL_GetTicks();
         bool draw_occurred = false;
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 500; i++) {
             draw_occurred = emulate_cycle();
             if (draw_occurred) break;
         }
