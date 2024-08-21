@@ -696,16 +696,15 @@ int main(int argc, char** argv) {
 
     uint32_t start_tick;
     const uint32_t frame_time = 16;
-    float time_per_cycle = 1000/60;
+    float time_per_cycle = 1000/500;
     uint16_t instructions_this_cycle = 0;
     uint32_t last_draw_time = 0;
-    uint32_t last_timer_update = 0;
 
     while (!should_quit) {
         start_tick = SDL_GetTicks();
         bool draw_occurred = false;
 
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 12; i++) {
             draw_occurred = emulate_cycle();
             if (draw_occurred) break;
         }
@@ -725,10 +724,15 @@ int main(int argc, char** argv) {
         }
 
         // Decrement the timers if needed:
-        if (start_tick - last_timer_update >= time_per_cycle) {
-            if (delay_timer > 0) delay_timer-- ;
-            if (sound_timer > 0) sound_timer--;
-            last_timer_update = start_tick;
+        if (start_tick - last_draw_time >= 16) {
+            if (delay_timer > 0) {
+                delay_timer -= 1;
+                printf("delay_timer: %i\n", delay_timer);
+            }
+            if (sound_timer > 0){
+                sound_timer -= 1;
+                printf("sound_timer: %i\n", sound_timer);
+            }
         }
 
         sdl_handler(keypad);
