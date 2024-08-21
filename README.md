@@ -17,6 +17,6 @@ The NES, uses the Ricoh 2A03, which was based on the 6502, and I will be emulati
 
 ## TODO:
 
-- [ ] Start working on 6502 
 - [x] CHIP-8 interpreter has instructions implemented, needs to be debugged, some things like timers & keypad need to be double checked.
 - [x] CHIP-8 is now passing all tests I can throw at it other than display wait, so I'm considering this project finished, could add a changeable game speed again though
+- [ ] Get the NES emulator working
