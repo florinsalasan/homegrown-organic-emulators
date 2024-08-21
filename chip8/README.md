@@ -19,6 +19,17 @@ The code is provided as is and has not been thoroughly tested, this was just a s
 that I wanted to run for myself, SDL needs to be installed on your machine to use this, the cmake 
 file might need to be adjusted based on the SDL installation. 
 
+## Resources used along the way 
+In no particular order since I don't know the order:
+- Cowgod's [CHIP-8 technical reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#8xy4)
+- Tobias' [Guide to making a CHIP-8 emulator](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#instructions)
+- Timendus [chip8-test-suite](https://github.com/Timendus/chip8-test-suite)
+- Laurence Muller's writeup on [multigesture.net](https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/)
+- Random reddit threads that vaguely mentioned the same issues I was encountering
+- Laurence Scotford's [in depth guide on how sprites are drawn](https://www.laurencescotford.net/2020/07/19/chip-8-on-the-cosmac-vip-drawing-sprites/)
+- Wolfgang Ziegler's guide on [compiling SDL projects with CMake on mac](https://wolfgang-ziegler.com/Blog/sdl-cmake-osx)
+
+
 ## TODO/BROKEN:
 - [x] Display clipping gives err2 on the quirks test ROM from timendus' test suite, now passes
 - [x] Display wait gives slow on the same quirks test ROM
