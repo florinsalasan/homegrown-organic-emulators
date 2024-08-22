@@ -1,5 +1,6 @@
 pub struct CPU {
     pub register_a: u8,
+    pub register_x: u8,
     pub status: u8, // Use each bit of status as a different flag to be more
     // efficient(?), negative flag is the first bit, second last is zero flag
     pub program_counter: u16,
@@ -9,6 +10,7 @@ impl CPU {
     pub fn new() -> Self {
         CPU {
             register_a: 0,
+            register_x: 0,
             status: 0,
             program_counter: 0,
         }
@@ -31,14 +33,6 @@ impl CPU {
                 0x00 => { 
                     return;
                 }
-                0xA5 => {
-                    // 0xA5 LDA in Zero Page Addressing Mode
-                    let param = program[self.program_counter as usize];
-                    self.program_counter += 1;
-                    self.register_a = param;
-
-
-                }
                 0xA9 => {
                     // 0xA9 LDA (Load accumulator) in immediate addressing mode,
                     // 2 bytes, 2 cycles according to the reference table
@@ -53,6 +47,23 @@ impl CPU {
                     }
 
                     if self.register_a & 0b1000_0000 != 0 {
+                        self.status = self.status | 0b1000_0000;
+                    } else {
+                        self.status = self.status & 0b0111_1111;
+                    }
+                }
+                0xAA => {
+                    // 0xAA TAX (Transfer accumulator to register X) set register_x
+                    // to the value in the accumulator, only one addressing mode
+                    self.register_x = self.register_a;
+
+                    if self.register_x == 0 {
+                        self.status = self.status | 0b0000_0010;
+                    } else {
+                        self.status = self.status & 0b1111_1101;
+                    }
+
+                    if self.register_x & 0b1000_0000 != 0 {
                         self.status = self.status | 0b1000_0000;
                     } else {
                         self.status = self.status & 0b0111_1111;
@@ -86,5 +97,42 @@ mod test {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0x00, 0x00]);
         assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    #[test]
+    fn test_0xa9_lda_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0xF0, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
+
+    #[test]
+    fn test_0xaa_tax() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.register_a, 0x05);
+        cpu.status = 0;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b00);
+        assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xaa_tax_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x00, 0x00]);
+        cpu.status = 0;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    #[test]
+    fn test_0xaa_tax_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0xF0, 0x00]);
+        cpu.status = 0;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
 }
