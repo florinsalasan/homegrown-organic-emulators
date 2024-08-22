@@ -69,6 +69,23 @@ impl CPU {
                         self.status = self.status & 0b0111_1111;
                     }
                 }
+                0xE8 => {
+                    // 0xE8 INX (Increment Register X) Adds one to the register and
+                    // then sets the Zero flag, Negative flag if needed
+                    self.register_x = self.register_x + 1;
+
+                    if self.register_x == 0 {
+                        self.status = self.status | 0b0000_0010;
+                    } else {
+                        self.status = self.status & 0b1111_1101;
+                    }
+
+                    if self.register_x & 0b1000_0000 != 0 {
+                        self.status = self.status | 0b1000_0000;
+                    } else {
+                        self.status = self.status & 0b0111_1111;
+                    }
+                }
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
         }
@@ -83,6 +100,7 @@ fn main() {
 mod test {
     use super::*;
 
+    // 0xA9
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
         let mut cpu = CPU::new();
@@ -106,7 +124,7 @@ mod test {
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
 
-
+    // 0xAA, could have just set register_a manually lol
     #[test]
     fn test_0xaa_tax() {
         let mut cpu = CPU::new();
@@ -129,6 +147,38 @@ mod test {
 
     #[test]
     fn test_0xaa_tax_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0xF0, 0x00]);
+        cpu.status = 0;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+    
+    // 0xE8 
+    #[test]
+    fn test_0xe8_inx() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 1;
+        cpu.interpret(vec![0xe8, 0x00]);
+        assert!(cpu.register_x == 2);
+        // double check flags, aka finish the test
+        assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    // TODO: Modify the next two tests, at the moment they were just copied from 
+    // the last set of tests for 0xA9
+
+    #[test]
+    fn test_0xe8_inx_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x00, 0x00]);
+        cpu.status = 0;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    #[test]
+    fn test_0xe8_inx_negative_flag() {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0xF0, 0x00]);
         cpu.status = 0;
