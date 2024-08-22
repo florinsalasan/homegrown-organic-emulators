@@ -1,6 +1,7 @@
 pub struct CPU {
     pub register_a: u8,
-    pub status: u8,
+    pub status: u8, // Use each bit of status as a different flag to be more
+    // efficient(?), negative flag is the first bit, second last is zero flag
     pub program_counter: u16,
 }
 
@@ -29,6 +30,14 @@ impl CPU {
             match opcode {
                 0x00 => { 
                     return;
+                }
+                0xA5 => {
+                    // 0xA5 LDA in Zero Page Addressing Mode
+                    let param = program[self.program_counter as usize];
+                    self.program_counter += 1;
+                    self.register_a = param;
+
+
                 }
                 0xA9 => {
                     // 0xA9 LDA (Load accumulator) in immediate addressing mode,
