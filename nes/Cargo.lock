@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "emu6502"
+name = "rusty_nes"
 version = "0.1.0"
