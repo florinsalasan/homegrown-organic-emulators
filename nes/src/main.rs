@@ -16,7 +16,28 @@ impl CPU {
         }
     }
 
-    pub fn set_cpu_status(&mut self, result: u8) {
+    // 0xA9 LDA (Load accumulator) in immediate addressing mode,
+    // 2 bytes, 2 cycles according to the reference table
+    pub fn lda(&mut self, value: u8) {
+        self.register_a = value;
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // 0xAA TAX (Transfer accumulator to register X) set register_x
+    // to the value in the accumulator, only one addressing mode
+    pub fn tax(&mut self) {
+        self.register_x = self.register_a;
+        self.set_zero_and_neg_flags(self.register_x)
+    }
+
+    // 0xE8 INX (Increment Register X) Adds one to the register and
+    // then sets the Zero flag, Negative flag if needed
+    pub fn inx(&mut self) {
+        self.register_x = self.register_x.wrapping_add(1);
+        self.set_zero_and_neg_flags(self.register_x);
+    }
+
+    pub fn set_zero_and_neg_flags(&mut self, result: u8) {
 
         // Set the Zero flag
         if result == 0 {
@@ -52,28 +73,15 @@ impl CPU {
                     return;
                 }
                 0xA9 => {
-                    // 0xA9 LDA (Load accumulator) in immediate addressing mode,
-                    // 2 bytes, 2 cycles according to the reference table
                     let param = program[self.program_counter as usize];
                     self.program_counter += 1;
-                    self.register_a = param;
 
-                    self.set_cpu_status(self.register_a);
+                    self.lda(param);
                 }
-                0xAA => {
-                    // 0xAA TAX (Transfer accumulator to register X) set register_x
-                    // to the value in the accumulator, only one addressing mode
-                    self.register_x = self.register_a;
+                0xAA => self.tax(),
 
-                    self.set_cpu_status(self.register_x);
-                }
-                0xE8 => {
-                    // 0xE8 INX (Increment Register X) Adds one to the register and
-                    // then sets the Zero flag, Negative flag if needed
-                    self.register_x = self.register_x.wrapping_add(1);
+                0xE8 => self.inx(),
 
-                    self.set_cpu_status(self.register_x);
-                }
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
         }
@@ -168,8 +176,26 @@ mod test {
         let mut cpu = CPU::new();
         cpu.register_x = 254;
         cpu.interpret(vec![0xe8, 0x00]);
-        assert!(cpu.register_x == 255);
+        assert_eq!(cpu.register_x, 255);
         assert!(cpu.status & 0b0000_0010 == 0);
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
+    #[test]
+    fn test_5_ops_together() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+        assert!(cpu.register_a == 0xc0);
+        assert!(cpu.register_a == cpu.register_x - 1);
+        assert_eq!(cpu.register_x, 0xc1);
+    }
+
+    #[test]
+    fn test_inx_overflow() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0xff;
+        cpu.interpret(vec![0xe8, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 1)
     }
 }
