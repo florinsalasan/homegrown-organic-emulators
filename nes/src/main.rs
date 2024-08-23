@@ -2,7 +2,7 @@ pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub status: u8, // Use each bit of status as a different flag to be more
-    // efficient(?), negative flag is the first bit, second last is zero flag
+    // efficient(?), negative flag is the 7th bit number, bit number 1 is zero flag
     pub program_counter: u16,
 }
 
@@ -72,7 +72,7 @@ impl CPU {
                 0xE8 => {
                     // 0xE8 INX (Increment Register X) Adds one to the register and
                     // then sets the Zero flag, Negative flag if needed
-                    self.register_x = self.register_x + 1;
+                    self.register_x = self.register_x.wrapping_add(1);
 
                     if self.register_x == 0 {
                         self.status = self.status | 0b0000_0010;
@@ -161,28 +161,27 @@ mod test {
         cpu.register_x = 1;
         cpu.interpret(vec![0xe8, 0x00]);
         assert!(cpu.register_x == 2);
-        // double check flags, aka finish the test
-        assert!(cpu.status & 0b0000_0010 == 0b10);
+        assert!(cpu.status & 0b0000_0010 == 0);
+        assert!(cpu.status & 0b1000_0000 == 0);
     }
-
-    // TODO: Modify the next two tests, at the moment they were just copied from 
-    // the last set of tests for 0xA9
 
     #[test]
     fn test_0xe8_inx_zero_flag() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0x00, 0x00]);
-        cpu.status = 0;
-        cpu.interpret(vec![0xaa, 0x00]);
-        assert!(cpu.status & 0b0000_0010 == 0b10);
+        cpu.register_x = 255;
+        cpu.interpret(vec![0xe8, 0x00]);
+        assert!(cpu.register_x == 0);
+        assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
+        assert!(cpu.status & 0b1000_0000 == 0);
     }
 
     #[test]
     fn test_0xe8_inx_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0xF0, 0x00]);
-        cpu.status = 0;
-        cpu.interpret(vec![0xaa, 0x00]);
+        cpu.register_x = 254;
+        cpu.interpret(vec![0xe8, 0x00]);
+        assert!(cpu.register_x == 255);
+        assert!(cpu.status & 0b0000_0010 == 0);
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
 }
