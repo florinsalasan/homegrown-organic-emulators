@@ -16,6 +16,24 @@ impl CPU {
         }
     }
 
+    pub fn set_cpu_status(&mut self, result: u8) {
+
+        // Set the Zero flag
+        if result == 0 {
+            self.status = self.status | 0b0000_0010;
+        } else {
+            self.status = self.status & 0b1111_1101;
+        }
+
+        // Set the Negative flag
+        if result & 0b1000_0000 != 0 {
+            self.status = self.status | 0b1000_0000;
+        } else {
+            self.status = self.status & 0b0111_1111;
+        }
+
+    }
+
     // The main CPU loop is:
     // Fetch next instruction from memory,
     // Decode the instruction,
@@ -40,51 +58,21 @@ impl CPU {
                     self.program_counter += 1;
                     self.register_a = param;
 
-                    if self.register_a == 0 {
-                        self.status = self.status | 0b0000_0010;
-                    } else {
-                        self.status = self.status & 0b1111_1101;
-                    }
-
-                    if self.register_a & 0b1000_0000 != 0 {
-                        self.status = self.status | 0b1000_0000;
-                    } else {
-                        self.status = self.status & 0b0111_1111;
-                    }
+                    self.set_cpu_status(self.register_a);
                 }
                 0xAA => {
                     // 0xAA TAX (Transfer accumulator to register X) set register_x
                     // to the value in the accumulator, only one addressing mode
                     self.register_x = self.register_a;
 
-                    if self.register_x == 0 {
-                        self.status = self.status | 0b0000_0010;
-                    } else {
-                        self.status = self.status & 0b1111_1101;
-                    }
-
-                    if self.register_x & 0b1000_0000 != 0 {
-                        self.status = self.status | 0b1000_0000;
-                    } else {
-                        self.status = self.status & 0b0111_1111;
-                    }
+                    self.set_cpu_status(self.register_x);
                 }
                 0xE8 => {
                     // 0xE8 INX (Increment Register X) Adds one to the register and
                     // then sets the Zero flag, Negative flag if needed
                     self.register_x = self.register_x.wrapping_add(1);
 
-                    if self.register_x == 0 {
-                        self.status = self.status | 0b0000_0010;
-                    } else {
-                        self.status = self.status & 0b1111_1101;
-                    }
-
-                    if self.register_x & 0b1000_0000 != 0 {
-                        self.status = self.status | 0b1000_0000;
-                    } else {
-                        self.status = self.status & 0b0111_1111;
-                    }
+                    self.set_cpu_status(self.register_x);
                 }
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
