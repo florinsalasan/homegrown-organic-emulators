@@ -19,27 +19,6 @@ impl CPU {
         }
     }
 
-    // read memory at a given address
-    pub fn mem_read(&mut self, address: u16) -> u8 {
-        self.memory[address as usize]
-    }
-
-    // write data to memory at a given address
-    pub fn mem_write(&mut self, address: u16, data: u8) {
-        self.memory[address as usize] = data
-    }
-
-    pub fn load_and_run(&mut self, program: Vec<u8>) {
-        let _cloned = program.clone();
-        self.load(program);
-        self.run();
-    }
-
-    pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.program_counter = 0x8000;
-    }
-
     // 0xA9 LDA (Load accumulator) in immediate addressing mode,
     // 2 bytes, 2 cycles according to the reference table
     pub fn lda(&mut self, value: u8) {
@@ -77,6 +56,43 @@ impl CPU {
             self.status = self.status & 0b0111_1111;
         }
 
+    }
+    // read memory at a given address
+    pub fn mem_read(&mut self, address: u16) -> u8 {
+        self.memory[address as usize]
+    }
+
+    // write data to memory at a given address
+    pub fn mem_write(&mut self, address: u16, data: u8) {
+        self.memory[address as usize] = data
+    }
+
+    pub fn load_and_run(&mut self, program: Vec<u8>) {
+        let _cloned = program.clone();
+        self.load(program);
+        self.run();
+    }
+
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.program_counter = 0x8000;
+    }
+
+    // for mem_read_u16 and mem_write_u16 double check that this isn't breaking anything
+    // since macs are little endian like nes was so this might not be necessary at all
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
+        let lo = self.mem_read(pos) as u16;
+        let hi = self.mem_read(pos + 1) as u16;
+        // remember in rust if every branch has a line like the one below, it is
+        // an implicit return
+        (hi << 8) | (lo as u16)
+    }
+
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.mem_write(pos, lo);
+        self.mem_write(pos + 1, hi);
     }
 
     // The main CPU loop is:
