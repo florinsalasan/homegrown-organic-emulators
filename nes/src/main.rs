@@ -1,5 +1,3 @@
-use core::panic;
-
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
@@ -46,6 +44,12 @@ impl CPU {
 
         self.register_a = value;
         self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // STA, copies value from register A into memory
+    pub fn sta(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.register_a);
     }
 
     // 0xAA TAX (Transfer accumulator to register X) set register_x
@@ -199,6 +203,40 @@ impl CPU {
                 0x00 => { 
                     return;
                 }
+                // STA opcodes
+                0x81 => {
+                    self.sta(&AddressingMode::Indirect_X);
+                    self.program_counter += 1;
+                }
+                0x85 => {
+                    self.sta(&AddressingMode::ZeroPage);
+                    self.program_counter += 1;
+                }
+                0x8D => {
+                    self.sta(&AddressingMode::Absolute);
+                    self.program_counter += 2;
+                }
+                0x91 => {
+                    self.sta(&AddressingMode::Indirect_Y);
+                    self.program_counter += 1;
+                }
+                0x95 => {
+                    self.sta(&AddressingMode::ZeroPage_X);
+                    self.program_counter += 1;
+                }
+                0x99 => {
+                    self.sta(&AddressingMode::Absolute_Y);
+                    self.program_counter += 2;
+                }
+                0x9D => {
+                    self.sta(&AddressingMode::Absolute_X);
+                    self.program_counter += 2;
+                }
+                // LDA opcodes
+                0xA1 => {
+                    self.lda(&AddressingMode::Indirect_X);
+                    self.program_counter += 1;
+                }
                 0xA5 => {
                     self.lda(&AddressingMode::ZeroPage);
                     self.program_counter += 1;
@@ -207,10 +245,32 @@ impl CPU {
                     self.lda(&AddressingMode::Immediate);
                     self.program_counter += 1;
                 }
-                0xAA => self.tax(),
-
-                0xE8 => self.inx(),
-
+                0xAD => {
+                    self.lda(&AddressingMode::Absolute);
+                    self.program_counter += 2;
+                }
+                0xB1 => {
+                    self.lda(&AddressingMode::Indirect_Y);
+                    self.program_counter += 1;
+                }
+                0xB5 => {
+                    self.lda(&AddressingMode::ZeroPage_X);
+                    self.program_counter += 1;
+                }
+                0xB9 => {
+                    self.lda(&AddressingMode::Absolute_Y);
+                    self.program_counter += 2;
+                }
+                0xBD => {
+                    self.lda(&AddressingMode::Absolute_X);
+                    self.program_counter += 2;
+                }
+                0xAA => {
+                    self.tax();
+                }
+                0xE8 => {
+                    self.inx();
+                }
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
         }
