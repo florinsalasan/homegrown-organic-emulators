@@ -98,7 +98,7 @@ impl CPU {
 
     fn mem_write_u16(&mut self, pos: u16, data: u16) {
         let hi = (data >> 8) as u8;
-        let lo = (data & 0xff) as u8;
+        let lo = (data & 0xFF) as u8;
         self.mem_write(pos, lo);
         self.mem_write(pos + 1, hi);
     }
@@ -167,14 +167,11 @@ mod test {
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
 
-    // 0xAA, could have just set register_a manually lol
+    // 0xAA, could have just set register_a manually lol, not anymore, this was for the better
     #[test]
     fn test_0xaa_tax() {
         let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
-        assert_eq!(cpu.register_a, 0x05);
-        cpu.status = 0;
-        cpu.load_and_run(vec![0xaa, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0x05, 0xaa, 0x00]);
         assert!(cpu.status & 0b0000_0010 == 0b00);
         assert!(cpu.status & 0b1000_0000 == 0);
     }
@@ -191,9 +188,7 @@ mod test {
     #[test]
     fn test_0xaa_tax_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xa9, 0xF0, 0x00]);
-        cpu.status = 0;
-        cpu.load_and_run(vec![0xaa, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0xF0, 0xaa, 0x00]);
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
     }
     
@@ -201,18 +196,18 @@ mod test {
     #[test]
     fn test_0xe8_inx() {
         let mut cpu = CPU::new();
-        cpu.register_x = 1;
         cpu.load_and_run(vec![0xe8, 0x00]);
-        assert!(cpu.register_x == 2);
+        assert!(cpu.register_x == 1);
         assert!(cpu.status & 0b0000_0010 == 0);
         assert!(cpu.status & 0b1000_0000 == 0);
     }
 
     #[test]
     fn test_0xe8_inx_zero_flag() {
+        // load_and_run now resets the registers so need to create a program to test this properly
+        // without setting registers manually
         let mut cpu = CPU::new();
-        cpu.register_x = 255;
-        cpu.load_and_run(vec![0xe8, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0x00]);
         assert!(cpu.register_x == 0);
         assert!(cpu.status & 0b0000_0010 == 0b0000_0010);
         assert!(cpu.status & 0b1000_0000 == 0);
@@ -221,8 +216,7 @@ mod test {
     #[test]
     fn test_0xe8_inx_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.register_x = 254;
-        cpu.load_and_run(vec![0xe8, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0xfe, 0xaa, 0xe8, 0x00]);
         assert_eq!(cpu.register_x, 255);
         assert!(cpu.status & 0b0000_0010 == 0);
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
@@ -238,11 +232,9 @@ mod test {
     }
 
     #[test]
-    fn test_inx_overflow() {
+    fn test_0xe8_inx_overflow() {
         let mut cpu = CPU::new();
-        cpu.register_x = 0xff;
-        cpu.load_and_run(vec![0xe8, 0xe8, 0x00]);
-
+        cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00]);
         assert_eq!(cpu.register_x, 1)
     }
 }
