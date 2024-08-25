@@ -11,7 +11,7 @@ pub struct CPU {
 
 pub struct OpCode {
     pub opcode_num: u8,
-    pub instruction_type: String,
+    pub instruction_type: &Str,
     pub bytes: u8,
     pub cycles: u8,
     pub addressing_mode: AddressingMode,
@@ -35,10 +35,8 @@ pub enum AddressingMode {
 // guide wants to use lazy_static crate to make the following list possible, 
 // since it allows us to not need self.program_counter += x on most lines
 // and I don't want to use external crates for this project
-// I'm trying to see if it works with const intead, can't convert &str to String
-// with const methods from what I'm seeing, so things are breaking
+// I'm trying to see if it works with const intead
 
-/*
 const CPU_OPCODES: Vec<OpCode> = vec![
     OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
     OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAddressing),
@@ -52,13 +50,12 @@ const CPU_OPCODES: Vec<OpCode> = vec![
     OpCode::new(0xA1, "LDA", 2, 6, AddressingMode::Indirect_X),
     OpCode::new(0xB1, "LDA", 2, 5 /*+1 if page is crossed*/, AddressingMode::Indirect_Y),
 ];
-*/
 
 impl OpCode {
-    pub fn new(opcode_num: u8, instruction_type: &str, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Self {
+    pub const fn new(opcode_num: u8, instruction_type: String, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Self {
         OpCode {
             opcode_num,
-            instruction_type: String::from(instruction_type),
+            instruction_type,
             bytes,
             cycles,
             addressing_mode,
