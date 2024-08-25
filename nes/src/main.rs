@@ -38,8 +38,8 @@ impl CPU {
         }
     }
 
-    // 0xA9 LDA (Load accumulator) in immediate addressing mode,
-    // 2 bytes, 2 cycles according to the reference table
+    // LDA that takes in different AddressingModes
+    // 0xA9, 0xA5, 0xB5, 0xAD, 0xBD, 0xB9, 0xA1, 0xB1
     pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -233,6 +233,16 @@ mod test {
         assert_eq!(cpu.register_a, 0x05);
         assert!(cpu.status & 0b0000_0010 == 0b00);
         assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xa5_lda_zeropage_from_memory() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x55);
     }
 
     #[test]
