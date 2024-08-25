@@ -225,6 +225,30 @@ fn main() {
 mod test {
     use super::*;
 
+    // 0xA5
+    #[test]
+    fn test_0xa5_lda_zeropage_load_data() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.register_a, 0x05);
+        assert!(cpu.status & 0b0000_0010 == 0b00);
+        assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xa5_lda_zeropage_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x00, 0x00]);
+        assert!(cpu.status & 0b0000_0010 == 0b10);
+    }
+
+    #[test]
+    fn test_0xa5_lda_zeropage_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0xF0, 0x00]);
+        assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
+    }
+
     // 0xA9
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
@@ -236,14 +260,14 @@ mod test {
     }
 
     #[test]
-    fn test_0xa9_lda_zero_flag() {
+    fn test_0xa9_lda_immediate_zero_flag() {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0x00, 0x00]);
         assert!(cpu.status & 0b0000_0010 == 0b10);
     }
 
     #[test]
-    fn test_0xa9_lda_negative_flag() {
+    fn test_0xa9_lda_immediate_negative_flag() {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0xF0, 0x00]);
         assert!(cpu.status & 0b1000_0000 == 0b1000_0000);
