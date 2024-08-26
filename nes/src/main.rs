@@ -9,13 +9,15 @@ pub struct CPU {
     memory: [u8; 0xFFFF]
 }
 
-pub struct OpCode {
+/*
+pub struct OpCode<'a> {
     pub opcode_num: u8,
-    pub instruction_type: String,
+    pub instruction_type: &'a str,
     pub bytes: u8,
     pub cycles: u8,
     pub addressing_mode: AddressingMode,
 }
+*/
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
@@ -54,18 +56,22 @@ const CPU_OPCODES: Vec<OpCode> = vec![
 ];
 */
 
-impl OpCode {
-    pub fn new(opcode_num: u8, instruction_type: &str, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Self {
+// What if I just don't create an opcode struct and not have all these headaches and intead I just
+// type out self.program_counter += x a few more times
+
+/*
+impl<'a> OpCode<'a> {
+    pub const fn new(opcode_num: u8, instruction_type: &'a str, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Self {
         OpCode {
             opcode_num,
-            instruction_type: String::from(instruction_type),
+            instruction_type, 
             bytes,
             cycles,
             addressing_mode,
         }
     }
-
 }
+*/
 
 impl CPU {
     pub fn new() -> Self {
