@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
@@ -9,7 +11,6 @@ pub struct CPU {
     memory: [u8; 0xFFFF]
 }
 
-/*
 pub struct OpCode<'a> {
     pub opcode_num: u8,
     pub instruction_type: &'a str,
@@ -17,7 +18,6 @@ pub struct OpCode<'a> {
     pub cycles: u8,
     pub addressing_mode: AddressingMode,
 }
-*/
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
@@ -40,26 +40,27 @@ pub enum AddressingMode {
 // I'm trying to see if it works with const intead, can't convert &str to String
 // with const methods from what I'm seeing, so things are breaking
 
-/*
-const CPU_OPCODES: Vec<OpCode> = vec![
-    OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
-    OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAddressing),
+static V: OnceLock<Vec<OpCode>> = OnceLock::new();
 
-    OpCode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
-    OpCode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
-    OpCode::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPage_X),
-    OpCode::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute),
-    OpCode::new(0xBD, "LDA", 3, 4 /*+1 if page is crossed*/, AddressingMode::Absolute_X),
-    OpCode::new(0xB9, "LDA", 3, 4 /*+1 if page is crossed*/, AddressingMode::Absolute_Y),
-    OpCode::new(0xA1, "LDA", 2, 6, AddressingMode::Indirect_X),
-    OpCode::new(0xB1, "LDA", 2, 5 /*+1 if page is crossed*/, AddressingMode::Indirect_Y),
-];
-*/
+pub fn init_opcodes() -> &'static [OpCode<'static>] {
+    V.get_or_init(|| vec![
+        OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
+        OpCode::new(0xAA, "TAX", 1, 2, AddressingMode::NoneAddressing),
+
+        OpCode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
+        OpCode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
+        OpCode::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPage_X),
+        OpCode::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute),
+        OpCode::new(0xBD, "LDA", 3, 4 /*+1 if page is crossed*/, AddressingMode::Absolute_X),
+        OpCode::new(0xB9, "LDA", 3, 4 /*+1 if page is crossed*/, AddressingMode::Absolute_Y),
+        OpCode::new(0xA1, "LDA", 2, 6, AddressingMode::Indirect_X),
+        OpCode::new(0xB1, "LDA", 2, 5 /*+1 if page is crossed*/, AddressingMode::Indirect_Y)
+    ])
+}
 
 // What if I just don't create an opcode struct and not have all these headaches and intead I just
 // type out self.program_counter += x a few more times
 
-/*
 impl<'a> OpCode<'a> {
     pub const fn new(opcode_num: u8, instruction_type: &'a str, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Self {
         OpCode {
@@ -71,7 +72,6 @@ impl<'a> OpCode<'a> {
         }
     }
 }
-*/
 
 impl CPU {
     pub fn new() -> Self {
