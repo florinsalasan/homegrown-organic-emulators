@@ -462,4 +462,14 @@ mod test {
         cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00]);
         assert_eq!(cpu.register_x, 1)
     }
+
+    // 0x85 
+    #[test]
+    fn test_0x85_sta_zeropage() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x15, 0x85, 0x00]);
+        // STA writes to the start of memory, honestly not sure if that's what it's
+        // supposed to do
+        assert_eq!(cpu.memory[0x00], 0x15);
+    }
 }
