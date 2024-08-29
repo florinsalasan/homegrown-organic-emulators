@@ -2,6 +2,8 @@ use std::sync::OnceLock;
 use std::collections::HashMap;
 use crate::cpu::AddressingMode;
 
+#[derive(Debug)]
+#[derive(Clone)]
 pub struct OpCode<'a> {
     pub opcode_num: u8,
     pub instruction_type: &'a str,
@@ -241,3 +243,35 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
     ])
 }
 
+
+static OPCODES_HASHMAP: OnceLock<HashMap<u8, OpCode>> = OnceLock::new();
+
+pub fn init_opcodes_hashmap_helper() ->  Option<HashMap<u8, OpCode<'static>>>{
+    let mut opcodes_map: HashMap<u8, OpCode<'_>> = HashMap::new();
+    let opcode_list = ALLOPCODES.get().unwrap();
+    print!("{:?}", opcode_list);
+    for opcode in opcode_list {
+        let new_opcode = opcode.clone();
+        opcodes_map.insert(new_opcode.opcode_num, new_opcode);
+    }
+    Some(opcodes_map)
+}
+
+pub fn init_opcodes_hashmap() -> &'static HashMap<u8, OpCode<'static>> {
+    OPCODES_HASHMAP.get_or_init(|| init_opcodes_hashmap_helper().unwrap())
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+    // I just want to print out the stuff in init_opcodes_hashmap;
+    // #[test]
+    // fn test_init_opcodes() {
+        // init_opcodes();
+        // print!("{:?}", init_opcodes_hashmap());
+        // assert!(1 == 2);
+    // }
+}

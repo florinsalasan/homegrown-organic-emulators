@@ -10,6 +10,7 @@ pub struct CPU {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 #[allow(non_camel_case_types)]
 pub enum AddressingMode {
     Immediate,
@@ -284,10 +285,6 @@ offset to add to the program counter if a condition is true.");
             }
         }
     }
-}
-
-fn main() {
-    
 }
 
 #[cfg(test)]
