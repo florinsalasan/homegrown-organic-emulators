@@ -1,3 +1,5 @@
+use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
+
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
@@ -205,6 +207,11 @@ offset to add to the program counter if a condition is true.");
 
     pub fn run(&mut self) {
 
+        init_opcodes();
+        // might as well remove the hashmap? But the method gets_or_inits the pub static
+        // hashmap so maybe it is needed, I have no idea what is happening behind the curtain 
+        let other_map = init_opcodes_hashmap();
+
         loop {
             let opcode = self.mem_read(self.program_counter);
             self.program_counter += 1;
@@ -214,33 +221,11 @@ offset to add to the program counter if a condition is true.");
                     return;
                 }
                 // STA opcodes
-                0x81 => {
-                    self.sta(&AddressingMode::Indirect_X);
-                    self.program_counter += 1;
-                }
-                0x85 => {
-                    self.sta(&AddressingMode::ZeroPage);
-                    self.program_counter += 1;
-                }
-                0x8D => {
-                    self.sta(&AddressingMode::Absolute);
-                    self.program_counter += 2;
-                }
-                0x91 => {
-                    self.sta(&AddressingMode::Indirect_Y);
-                    self.program_counter += 1;
-                }
-                0x95 => {
-                    self.sta(&AddressingMode::ZeroPage_X);
-                    self.program_counter += 1;
-                }
-                0x99 => {
-                    self.sta(&AddressingMode::Absolute_Y);
-                    self.program_counter += 2;
-                }
-                0x9D => {
-                    self.sta(&AddressingMode::Absolute_X);
-                    self.program_counter += 2;
+                0x81 | 0x85 | 0x8D | 0x91 | 0x95 | 0x99 | 0x9D => {
+                    // init the opcode hashtable somewhere and then start accessing it to enter the
+                    // parameters of the helper functions here
+                    self.sta(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
                 // LDA opcodes
                 0xA1 => {

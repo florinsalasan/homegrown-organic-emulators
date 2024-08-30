@@ -244,7 +244,7 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
 }
 
 
-static OPCODES_HASHMAP: OnceLock<HashMap<u8, OpCode>> = OnceLock::new();
+pub static OPCODES_HASHMAP: OnceLock<HashMap<u8, OpCode>> = OnceLock::new();
 
 pub fn init_opcodes_hashmap_helper() ->  Option<HashMap<u8, OpCode<'static>>>{
     let mut opcodes_map: HashMap<u8, OpCode<'_>> = HashMap::new();
@@ -260,8 +260,6 @@ pub fn init_opcodes_hashmap_helper() ->  Option<HashMap<u8, OpCode<'static>>>{
 pub fn init_opcodes_hashmap() -> &'static HashMap<u8, OpCode<'static>> {
     OPCODES_HASHMAP.get_or_init(|| init_opcodes_hashmap_helper().unwrap())
 }
-
-
 
 #[cfg(test)]
 mod tests {
