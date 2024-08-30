@@ -183,7 +183,7 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
 
         OpCode::new(0x68, "PLA", 1, 4, AddressingMode::NoneAddressing), // implied
 
-        OpCode::new(0x28, "PLA", 1, 4, AddressingMode::NoneAddressing), // implied
+        OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing), // implied
 
         OpCode::new(0x2A, "ROL", 1, 2, AddressingMode::NoneAddressing), // Actually accumulator, 
         // not NoneAddressing
@@ -265,13 +265,13 @@ pub fn init_opcodes_hashmap() -> &'static HashMap<u8, OpCode<'static>> {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
 
-    // I just want to print out the stuff in init_opcodes_hashmap;
-    // #[test]
-    // fn test_init_opcodes() {
-        // init_opcodes();
+    #[test]
+    fn test_init_opcodes_length() {
+        init_opcodes();
         // print!("{:?}", init_opcodes_hashmap());
-        // assert!(1 == 2);
-    // }
+        let ops_hashmap = init_opcodes_hashmap();
+        assert!(ops_hashmap.keys().len() == 151);
+    }
 }
