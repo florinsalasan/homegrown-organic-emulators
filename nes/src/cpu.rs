@@ -288,11 +288,26 @@ offset to add to the program counter if a condition is true.");
                 // CLV
                 0xB8 => todo!("self.clv(),"),
 
-                
                 // CMP opcodes
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
                     todo!("
                     self.cmp(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // CPX opcodes
+                0xE0 | 0xE4 | 0xEC => {
+                    todo!("
+                    self.cpx(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // CPY opcodes
+                0xC0 | 0xC4 | 0xCC => {
+                    todo!("
+                    self.cpy(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                     ")
                 }
