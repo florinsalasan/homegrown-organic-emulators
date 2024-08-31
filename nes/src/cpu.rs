@@ -217,9 +217,95 @@ offset to add to the program counter if a condition is true.");
             self.program_counter += 1;
 
             match opcode {
-                0x00 => { 
-                    return;
+                // BRK 
+                0x00 => return,
+
+                // ADC opcodes
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
+                    todo!("
+                    self.adc(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
                 }
+                
+                // AND opcodes
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
+                    todo!("
+                    self.and(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // ASL opcodes
+                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
+                    todo!("
+                    self.asl(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // BCC
+                0x90 => todo!("self.bcc(),"),
+                
+                // BCS
+                0xB0 => todo!("self.bcs(),"),
+                
+                // BEQ
+                0xF0 => todo!("self.beq(),"),
+                
+                // BIT opcodes
+                0x24 | 0x2C => {
+                    todo!("
+                    self.bit(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1
+                    ");
+                }
+
+                // BMI
+                0x30 => todo!("self.bmi(),"),
+
+                // BNE
+                0xD0 => todo!("self.bne(),"),
+
+                // BPL
+                0x10 => todo!("self.bpl(),"),
+                
+                // BVC
+                0x50 => todo!("self.bvc(),"),
+
+                // BVS
+                0x70 => todo!("self.bvs(),"),
+
+                // CLC
+                0x18 => todo!("self.clc(),"),
+
+                // CLD
+                0xD8 => todo!("self.cld(),"),
+
+                // CLI
+                0x58 => todo!("self.cli(),"),
+
+                // CLV
+                0xB8 => todo!("self.clv(),"),
+
+                
+                // CMP opcodes
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
+                    todo!("
+                    self.cmp(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // INX
+                0xE8 => self.inx(),
+                
+                // LDA opcodes
+                0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
+                    self.lda(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                }
+
                 // STA opcodes
                 0x81 | 0x85 | 0x8D | 0x91 | 0x95 | 0x99 | 0x9D => {
                     // init the opcode hashtable somewhere and then start accessing it to enter the
@@ -227,45 +313,10 @@ offset to add to the program counter if a condition is true.");
                     self.sta(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                // LDA opcodes
-                0xA1 => {
-                    self.lda(&AddressingMode::Indirect_X);
-                    self.program_counter += 1;
-                }
-                0xA5 => {
-                    self.lda(&AddressingMode::ZeroPage);
-                    self.program_counter += 1;
-                }
-                0xA9 => {
-                    self.lda(&AddressingMode::Immediate);
-                    self.program_counter += 1;
-                }
-                0xAD => {
-                    self.lda(&AddressingMode::Absolute);
-                    self.program_counter += 2;
-                }
-                0xB1 => {
-                    self.lda(&AddressingMode::Indirect_Y);
-                    self.program_counter += 1;
-                }
-                0xB5 => {
-                    self.lda(&AddressingMode::ZeroPage_X);
-                    self.program_counter += 1;
-                }
-                0xB9 => {
-                    self.lda(&AddressingMode::Absolute_Y);
-                    self.program_counter += 2;
-                }
-                0xBD => {
-                    self.lda(&AddressingMode::Absolute_X);
-                    self.program_counter += 2;
-                }
-                0xAA => {
-                    self.tax();
-                }
-                0xE8 => {
-                    self.inx();
-                }
+
+                // TAX
+                0xAA => self.tax(),
+
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
         }
