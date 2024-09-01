@@ -312,6 +312,28 @@ offset to add to the program counter if a condition is true.");
                     ")
                 }
 
+                // DEC opcodes
+                0xC6 | 0xD6 | 0xCE | 0xDE => {
+                    todo!("
+                    self.dec(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // DEX
+                0xCA => todo!("self.dex(),"),
+
+                // DEY
+                0x88 => todo!("self.dex(),"),
+                
+                // EOR opcodes
+                0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
+                    todo!("
+                    self.eor(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
                 // INX
                 0xE8 => self.inx(),
                 
