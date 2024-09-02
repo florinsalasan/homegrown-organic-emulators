@@ -187,7 +187,7 @@ impl CPU {
 
             AddressingMode::Relative => {
                 todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
-offset to add to the program counter if a condition is true.");
+                offset to add to the program counter if a condition is true.");
             }
 
             AddressingMode::NoneAddressing => {
@@ -334,25 +334,162 @@ offset to add to the program counter if a condition is true.");
                     ")
                 }
 
+                // INC opcodes
+                0xE6 | 0xF6 | 0xEE | 0xFE => {
+                    todo!("
+                    self.inc(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
                 // INX
                 0xE8 => self.inx(),
                 
+                // INY
+                0xC8 => todo!("self.iny(),"),
+
+                // JMP 
+                0x4C | 0x6C => {
+                    todo!("
+                    self.jmp(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // JSR
+                0x20 => todo!("self.jsr(),"),
+
                 // LDA opcodes
                 0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
                     self.lda(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
+                
+                // LDX opcodes
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => {
+                    todo!("
+                    self.ldx(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // LDY opcodes
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => {
+                    todo!("
+                    self.ldy(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // LSR opcodes
+                0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
+                    todo!("
+                    self.lsr(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // NOP
+                0xEA => todo!("self.nop(),"),
+
+                // ORA opcodes
+                0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
+                    todo!("
+                    self.ora(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // PHA
+                0x48 => todo!("self.pha(),"),
+                
+                // PHP
+                0x08 => todo!("self.php(),"),
+
+                // PLA
+                0x68 => todo!("self.pla(),"),
+
+                // PLP
+                0x28 => todo!("self.plp(),"),
+                
+                // ROL opcodes
+                0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
+                    todo!("
+                    self.rol(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+                
+                // ROR opcodes
+                0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
+                    todo!("
+                    self.ror(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // RTI
+                0x40 => todo!("self.rti(),"),
+
+                // RTS
+                0x60 => todo!("self.rts(),"),
+
+                // SBC opcodes
+                0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
+                    todo!("
+                    self.sbc(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // SEC
+                0x38 => todo!("self.sec(),"),
+
+                // SED
+                0xF8 => todo!("self.sed(),"),
+
+                // SEI
+                0x78 => todo!("self.sei(),"),
 
                 // STA opcodes
                 0x81 | 0x85 | 0x8D | 0x91 | 0x95 | 0x99 | 0x9D => {
-                    // init the opcode hashtable somewhere and then start accessing it to enter the
-                    // parameters of the helper functions here
                     self.sta(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
 
+                // STX opcodes
+                0x86 | 0x96 | 0x8E => {
+                    todo!("
+                    self.stx(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
+                // STY opcodes
+                0x84 | 0x94 | 0x8C => {
+                    todo!("
+                    self.sty(&other_map[&opcode].addressing_mode);
+                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    ")
+                }
+
                 // TAX
                 0xAA => self.tax(),
+
+                // TAY
+                0xA8 => todo!("self.tay(),"),
+
+                // TSX
+                0xBA => todo!("self.tsx(),"),
+
+                // TXA
+                0x8A => todo!("self.txa(),"),
+
+                // TXS
+                0x9A => todo!("self.txs(),"),
+
+                // TYA
+                0x98 => todo!("self.tya(),"),
 
                 _ => todo!("Build out the massive switch statement for opcodes")
             }
