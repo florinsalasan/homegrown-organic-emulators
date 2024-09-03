@@ -39,6 +39,16 @@ impl CPU {
             memory: [0; 0xFFFF],
         }
     }
+    // ADC, add with carry, reading the value of a given address, add the value 
+    // to the accumulator with the carry bit, if overflow occurs, carry bit is
+    // set enabling multiple byte addition
+    pub fn adc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        // could overfllow, change this if needed
+        self.register_a += self.mem_read(addr);
+        // sets zero and negative flags, still need to set overflow and carry flags
+        self.set_zero_and_neg_flags(self.register_a);
+    }
 
     // LDA that takes in different AddressingModes
     // 0xA9, 0xA5, 0xB5, 0xAD, 0xBD, 0xB9, 0xA1, 0xB1
