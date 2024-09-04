@@ -413,10 +413,8 @@ impl CPU {
                 
                 // BIT opcodes
                 0x24 | 0x2C => {
-                    todo!("
                     self.bit(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1
-                    ");
                 }
 
                 // BMI
