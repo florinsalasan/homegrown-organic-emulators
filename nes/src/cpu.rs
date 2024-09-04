@@ -1,12 +1,32 @@
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
+// # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
+//
+//  7 6 5 4 3 2 1 0
+//  N V _ B D I Z C
+//  | |   | | | | +--- Carry Flag
+//  | |   | | | +----- Zero Flag
+//  | |   | | +------- Interrupt Disable
+//  | |   | +--------- Decimal Mode (not used on NES)
+//  | |   +----------- Break Command
+//  | +--------------- Overflow Flag
+//  +----------------- Negative Flag
+// Access these flags with cpu.status then use bitwise operations
+
+const CARRY_BIT: u8 = 0b0000_0001;
+const ZERO_BIT: u8 = 0b0000_0010;
+const INTERRUPT_DISABLE_BIT: u8 = 0b0000_0100;
+const DECIMAL_MODE: u8 = 0b0000_1000; // not used on nes
+const BREAK_BIT: u8 = 0b0001_0000;
+const NOT_A_FLAG_BIT: u8 = 0b0010_0000; // Doesn't represent any flag
+const OVERFLOW_BIT: u8 = 0b0100_0000;
+const NEGATIVE_BIT: u8 = 0b1000_0000;
+
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
-    pub status: u8, // Use each bit of status as a different flag to be more
-    // efficient(?), negative flag is the 7th bit number, bit number 1 is zero flag
-    // this is stupid and I hate it, but each flag is one bit instead of one byte
+    pub status: u8, 
     pub program_counter: u16,
     memory: [u8; 0xFFFF]
 }
@@ -25,6 +45,7 @@ pub enum AddressingMode {
     Indirect_X,
     Indirect_Y,
     Relative,
+    Accumulator,
     NoneAddressing,
 }
 
@@ -44,13 +65,64 @@ impl CPU {
     // set enabling multiple byte addition
     pub fn adc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
-        // could overfllow, change this if needed
-        self.register_a += self.mem_read(addr);
+        let value_to_add = self.mem_read(addr);
+
+        // save the sum, to be able to properly set the necessary flags
+        let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 } as u16);
+
+        let carry = sum > 0xff;
+
+        if carry {
+            self.status = self.status | CARRY_BIT; 
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        let result  = sum as u8;
+
+        // I don't understand what this is looking for, but there is an article
+        // describing that overflow occurs when this LHS is nonzero, and I choose to
+        // believe that he is correct as he explains the bit operations in depth.
+        if (value_to_add ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+            self.status = self.status | OVERFLOW_BIT; 
+        } else {
+            // keep all of the other status flags while turning off the overflow_bit
+            self.status = self.status & !OVERFLOW_BIT; 
+        }
+
+        // store the result to register_a
+        self.register_a = result;
+
         // sets zero and negative flags, still need to set overflow and carry flags
+        self.set_zero_and_neg_flags(self.register_a);
+        // all 4 flags that can be set by this instruction are set
+    }
+
+    // AND - Logical AND is performed bit by bit on the accumulator (register_a) and the 
+    // byte of memory that is accessed.
+    pub fn and(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.register_a &= value; // surely this is too simple
         self.set_zero_and_neg_flags(self.register_a);
     }
 
+    // ASL - Arithmetic Shift Left, the operation shifts all bits of the accumulator (register_a)
+    // or the memory contents one bit to the left, bit 7 is placed into the carry 
+    // flag and bit 0 is set to 0. Zero and Negative flags also need to be updated
+    pub fn asl(&mut self, mode: &AddressingMode) {
+        let value_to_modify: u8;
+        if mode == AddressingMode::Accumulator {
+            // modify accumulator directly
+            value_to_modify = self.register_a;
+        } else {
+            let addr = self.get_operand_address(mode);
+        }
+
+    }
+
     // LDA that takes in different AddressingModes
+    // loads a byte of memory into the accumulator (register_a) and sets zero and neg flags
     // 0xA9, 0xA5, 0xB5, 0xAD, 0xBD, 0xB9, 0xA1, 0xB1
     pub fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
@@ -77,6 +149,7 @@ impl CPU {
     // then sets the Zero flag, Negative flag if needed
     pub fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
+        // does this actually check for the negative flag properly?
         self.set_zero_and_neg_flags(self.register_x);
     }
 
@@ -84,16 +157,16 @@ impl CPU {
 
         // Set the Zero flag
         if result == 0 {
-            self.status = self.status | 0b0000_0010;
+            self.status = self.status | ZERO_BIT;
         } else {
-            self.status = self.status & 0b1111_1101;
+            self.status = self.status & !ZERO_BIT;
         }
 
         // Set the Negative flag
         if result & 0b1000_0000 != 0 {
-            self.status = self.status | 0b1000_0000;
+            self.status = self.status | NEGATIVE_BIT;
         } else {
-            self.status = self.status & 0b0111_1111;
+            self.status = self.status & !NEGATIVE_BIT;
         }
 
     }
@@ -122,6 +195,7 @@ impl CPU {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
+        // Then NES typically uses 0x8000-0xFFFF for loading in the cartridge ROM
         self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x8000)
     }
@@ -198,6 +272,13 @@ impl CPU {
             AddressingMode::Relative => {
                 todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
                 offset to add to the program counter if a condition is true.");
+            }
+
+            AddressingMode::Accumulator => {
+                // This just modifies the accumulator directly, shouldn't really return anything
+                // here right?, Just throw in a check to see if the addressing mode is Accumulator 
+                // in any functions that can modify it directly 
+                return 0x00;
             }
 
             AddressingMode::NoneAddressing => {
