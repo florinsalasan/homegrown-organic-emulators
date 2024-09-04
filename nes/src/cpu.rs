@@ -165,6 +165,35 @@ impl CPU {
         todo!("Implement BEQ");
     }
 
+    // BIT - bit test: used to test if one or more bits are set in a target memory location.
+    // The mask pattern in the Accumulator (register_a) is ANDed with the value in memory to 
+    // set or clear the zero flag, without keeping the result. Bits 7 and 6 of the value in
+    // memory are copied into the Negative and Overflow flags respectively
+    pub fn bit(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode); // should only be zero page and absolute
+        let value_in_memory = self.mem_read(addr);
+
+        // copy bit values into overflow and negative flags
+        let new_overflow = value_in_memory & OVERFLOW_BIT;
+        if new_overflow & OVERFLOW_BIT == OVERFLOW_BIT {
+            self.status = self.status | OVERFLOW_BIT;
+        } else {
+            self.status = self.status & !OVERFLOW_BIT;
+        }
+
+        let new_overflow = value_in_memory & NEGATIVE_BIT;
+        if new_overflow & NEGATIVE_BIT == NEGATIVE_BIT{
+            self.status = self.status | NEGATIVE_BIT;
+        } else {
+            self.status = self.status & !NEGATIVE_BIT;
+        }
+        // There's gotta be a better way to set these flags than repeating this verbose
+        // method for each flag toggle in the emulator. But at least it should be obvious
+        // what it's doing each time. So it should be hard to not understand this in the future
+        let anded_value = value_in_memory & self.register_a;
+        
+    }
+
     // LDA that takes in different AddressingModes
     // loads a byte of memory into the accumulator (register_a) and sets zero and neg flags
     // 0xA9, 0xA5, 0xB5, 0xAD, 0xBD, 0xB9, 0xA1, 0xB1
