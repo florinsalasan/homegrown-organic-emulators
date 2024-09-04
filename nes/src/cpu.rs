@@ -111,14 +111,43 @@ impl CPU {
     // or the memory contents one bit to the left, bit 7 is placed into the carry 
     // flag and bit 0 is set to 0. Zero and Negative flags also need to be updated
     pub fn asl(&mut self, mode: &AddressingMode) {
-        let value_to_modify: u8;
-        if mode == AddressingMode::Accumulator {
+        let mut value_to_modify: u8;
+        let mut addr: u16 = 0;
+        if matches!(mode, AddressingMode::Accumulator) {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
-            let addr = self.get_operand_address(mode);
+            addr = self.get_operand_address(mode);
+            value_to_modify = self.mem_read(addr);
         }
 
+        // shift left one bit after saving bit 7 as the carry bit
+        if value_to_modify & CARRY_BIT == CARRY_BIT {
+            self.status = self.status | CARRY_BIT
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        // flag is set, shift it over by one, then set the zero and negative flags
+        value_to_modify = value_to_modify << 1;
+
+        self.set_zero_and_neg_flags(value_to_modify);
+
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            self.register_a = value_to_modify;
+        } else {
+            // this should only ever write to memory to the proper location, should
+            // never run if addressingMode is Accumulator
+            self.mem_write(addr, value_to_modify);
+        }
+    }
+
+    // BCC - Branch if carry clear: if the carry flag is clear, add the relative
+    // displacement to the program counter to cause a branch to a new location
+    // absolutely no idea what that means
+    pub fn bcc(&mut self) {
+        todo!("Implement BCC");
     }
 
     // LDA that takes in different AddressingModes
@@ -313,26 +342,20 @@ impl CPU {
 
                 // ADC opcodes
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
-                    todo!("
                     self.adc(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // AND opcodes
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
-                    todo!("
                     self.and(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // ASL opcodes
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
-                    todo!("
                     self.asl(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // BCC
