@@ -1,3 +1,5 @@
+use core::panicking::panic;
+
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
 // # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
@@ -148,6 +150,19 @@ impl CPU {
     // absolutely no idea what that means
     pub fn bcc(&mut self) {
         todo!("Implement BCC");
+    }
+
+    // BCS - Branch if carry set: If the carry flag is set, add the relative displacement
+    // to the program counter to cause a branch to a new location assuming this is the
+    // opposite of BCC
+    pub fn bcs(&mut self) {
+        todo!("Implement BCS");
+    }
+
+    // BEQ - Branch if equal: if the zero flag is set then add the relative displacement
+    // to the program counter to cause a branch to a new location
+    pub fn beq(&mut self) {
+        todo!("Implement BEQ");
     }
 
     // LDA that takes in different AddressingModes
@@ -605,7 +620,9 @@ impl CPU {
                 // TYA
                 0x98 => todo!("self.tya(),"),
 
-                _ => todo!("Build out the massive switch statement for opcodes")
+                _ => {
+                    todo!("Build out the massive switch statement for opcodes, this time it broke on {:} ", opcode)
+                }
             }
         }
     }
