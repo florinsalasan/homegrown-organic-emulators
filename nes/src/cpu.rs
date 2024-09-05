@@ -190,8 +190,14 @@ impl CPU {
         // There's gotta be a better way to set these flags than repeating this verbose
         // method for each flag toggle in the emulator. But at least it should be obvious
         // what it's doing each time. So it should be hard to not understand this in the future
+
+        // set the zero flag
         let anded_value = value_in_memory & self.register_a;
-        
+        if anded_value == 0 {
+            self.status = self.status | ZERO_BIT;
+        } else {
+            self.status = self.status & !ZERO_BIT;
+        }
     }
 
     // LDA that takes in different AddressingModes
