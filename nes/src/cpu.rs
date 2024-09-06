@@ -1,5 +1,3 @@
-use core::panicking::panic;
-
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
 // # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
@@ -18,7 +16,7 @@ use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 const CARRY_BIT: u8 = 0b0000_0001;
 const ZERO_BIT: u8 = 0b0000_0010;
 const INTERRUPT_DISABLE_BIT: u8 = 0b0000_0100;
-const DECIMAL_MODE: u8 = 0b0000_1000; // not used on nes
+const DECIMAL_MODE: u8 = 0b0000_1000; // not used on nes, still an instruction that clears it
 const BREAK_BIT: u8 = 0b0001_0000;
 const NOT_A_FLAG_BIT: u8 = 0b0010_0000; // Doesn't represent any flag
 const OVERFLOW_BIT: u8 = 0b0100_0000;
@@ -30,6 +28,7 @@ pub struct CPU {
     pub register_y: u8,
     pub status: u8, 
     pub program_counter: u16,
+    pub stack_pointer: u16,
     memory: [u8; 0xFFFF]
 }
 
@@ -59,6 +58,8 @@ impl CPU {
             register_y: 0,
             status: 0,
             program_counter: 0,
+            stack_pointer: 0x0100, // The stack in the nes is 256 bytes and stored in 
+            // memory between addresses 0x0100 and 0x01FF
             memory: [0; 0xFFFF],
         }
     }
@@ -200,6 +201,162 @@ impl CPU {
         }
     }
 
+    // BMI - Branch if Minus: if the negative flag is set then add the relative
+    // displacement to the program_counter to cause a branch to a new location
+    // just like the other branch instructions I need to implement relative addressing and
+    // find out what is meant by branching.
+    pub fn bmi(&mut self) {
+        todo!("Implement BMI");
+    }
+
+    // BNE - Branch if not equal: if zero flag is clear, add relative displacement to the 
+    // program counter to cause a branch to a new location.
+    pub fn bne(&mut self) {
+        todo!("Implement BNE");
+    }
+
+    // BPL - Branch if Positive: if the negative flag is clear then add the relative 
+    // displacement to the program counter to cause a branch to a new location
+    pub fn bpl(&mut self) {
+        todo!("Implement BPL");
+    }
+    
+    // BRK - Force interrupt: Program counter and processor status are pushed on the stack
+    // then the IRQ interrupt vector at $FFFE/F is loaded into the PC and the break flag in
+    // the status is set to one.
+    pub fn brk(&mut self) {
+        self.mem_write_u16(self.stack_pointer, self.program_counter);
+        self.mem_write(self.stack_pointer + 2, self.status);
+        self.stack_pointer += 3;
+        self.status = self.status | BREAK_BIT;
+        self.program_counter = 0xFFFE;
+        return 
+    }
+
+    // BVC - Branch if Overflow clear: if the overflow flag is clear then add the relative
+    // displacement to the program counter to cause a branch to a new location
+    pub fn bvc(&mut self) {
+        todo!("Implement BVC");
+    }
+
+    // BVS - Branch if Overflow set: if the overflow flag is set then add the relative
+    // displacement to the program counter to cause a branch to a new location
+    pub fn bvs(&mut self) {
+        todo!("Implement BVS");
+    }
+
+    // CLC - Clear Carry Flag: Set the carry flag to 0
+    pub fn clc(&mut self) {
+        // simple enough I guess.
+        self.status = self.status & !CARRY_BIT;
+    }
+
+    // CLD - Clear decimal mode: Set the decimal mode flag to 0.
+    pub fn cld(&mut self) {
+        self.status = self.status & !DECIMAL_MODE;
+    }
+
+    // CLI - Clear interrupt disable flag, this allows normal interrupt requests to 
+    // be serviced again.
+    pub fn cli(&mut self) {
+        self.status = self.status & !INTERRUPT_DISABLE_BIT;
+    }
+
+    // CLV - Clear overflow flag,
+    pub fn clv(&mut self) {
+        self.status = self.status & !OVERFLOW_BIT;
+    }
+
+    // CMP - Compare: The instruction compares the contents of the accumulator (register_a)
+    // with another memory held value and sets the zero, negative, and carry flags as needed.
+    pub fn cmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        if self.register_a >= value {
+            self.status = self.status | CARRY_BIT;
+        }
+
+        // this might be extremely incorrect implementation of what the instruction is 
+        // actually asking for. TODO: CHECK IF MUTATING
+        let diff_in_values = self.register_a.wrapping_sub(value);
+        self.set_zero_and_neg_flags(diff_in_values);
+
+    }
+
+    // CPX - Compare X register: the instruction compares the contents of the X register
+    // with another memory held value setting carry, zero, and negative flags
+    pub fn cpx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        if self.register_x >= value {
+            self.status = self.status | CARRY_BIT;
+        }
+
+        // this might be extremely incorrect implementation of what the instruction is 
+        // actually asking for. I'm really hoping this isn't modifying the value of 
+        // register_x, I'm pretty sure that it isn't meant to. TODO: CHECK IF MUTATING
+        let diff_in_values = self.register_x.wrapping_sub(value);
+        self.set_zero_and_neg_flags(diff_in_values);
+    }
+
+    // CPY - Compare Y register: the instruction compares the contents of the Y register
+    // with another memory held value setting carry, zero, and negative flags
+    pub fn cpy(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        if self.register_y >= value {
+            self.status = self.status | CARRY_BIT;
+        }
+
+        // this might be extremely incorrect implementation of what the instruction is 
+        // actually asking for. I'm really hoping this isn't modifying the value of 
+        // register_x, I'm pretty sure that it isn't meant to. TODO: CHECK IF MUTATING
+        let diff_in_values = self.register_y.wrapping_sub(value);
+        self.set_zero_and_neg_flags(diff_in_values);
+    }
+
+    // DEC - Decrement memory: Subtract one from the value held a the specified memory
+    // location setting zero and negative flags as needed overflow is ignored for some reason.
+    pub fn dec(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let mut value = self.mem_read(addr);
+
+        value = value.wrapping_sub(1);
+        self.mem_write(addr, value);
+
+        self.set_zero_and_neg_flags(value);
+    }
+
+    // DEX - Decrement X register: Subtract one from the value held in register_x
+    // setting zero and negative flags as needed overflow is ignored for some reason.
+    pub fn dex(&mut self) {
+        let mut value = self.register_x;
+
+        value = value.wrapping_sub(1);
+        self.register_x = value;
+
+        self.set_zero_and_neg_flags(value);
+    }
+
+    // DEY - Decrement Y register: Subtract one from the value held in register_y
+    // setting zero and negative flags as needed overflow is ignored for some reason.
+    pub fn dey(&mut self) {
+        let mut value = self.register_y;
+
+        value = value.wrapping_sub(1);
+        self.register_y= value;
+
+        self.set_zero_and_neg_flags(value);
+    }
+
+    // EOR - Exclusive OR: Perform an exclusive or on the accumulator (register_a) and the 
+    // value held in a specified memory location
+    pub fn eor(&mut self, mode: &AddressingMode) {
+    }
+
     // LDA that takes in different AddressingModes
     // loads a byte of memory into the accumulator (register_a) and sets zero and neg flags
     // 0xA9, 0xA5, 0xB5, 0xAD, 0xBD, 0xB9, 0xA1, 0xB1
@@ -270,13 +427,14 @@ impl CPU {
         self.register_x = 0;
         self.status = 0;
 
+
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
 
-    pub fn load(&mut self, program: Vec<u8>) {
+    pub fn load(&mut self, game_code: Vec<u8>) {
         // Then NES typically uses 0x8000-0xFFFF for loading in the cartridge ROM
-        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000)
+        self.memory[0x8000 .. (0x0600 + game_code.len())].copy_from_slice(&game_code[..]);
+        self.mem_write_u16(0xFFFC, 0x0600)
     }
 
     // for mem_read_u16 and mem_write_u16 double check that this isn't breaking anything
@@ -376,19 +534,27 @@ impl CPU {
     // repeat;
 
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {}); // What is this parameter?? :O
+    }
 
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where 
+        F: FnMut(&mut CPU),
+    {
         init_opcodes();
         // might as well remove the hashmap? But the method gets_or_inits the pub static
         // hashmap so maybe it is needed, I have no idea what is happening behind the curtain 
         let other_map = init_opcodes_hashmap();
 
         loop {
+            callback(self);
+
             let opcode = self.mem_read(self.program_counter);
             self.program_counter += 1;
 
             match opcode {
                 // BRK 
-                0x00 => return,
+                0x00 => self.brk(),
 
                 // ADC opcodes
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
