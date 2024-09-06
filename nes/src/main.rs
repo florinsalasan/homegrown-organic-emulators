@@ -2,7 +2,34 @@ pub mod cpu;
 use crate::cpu::CPU;
 pub mod opcodes;
 
+extern crate sdl2;
+
+use sdl2::event::Event;
+use sdl2::render::Canvas;
+use sdl2::EventPump;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use sdl2::pixels::PixelFormatEnum;
+
 fn main() {
+    // init sdl2 stuff
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsystem = sdl_context.video().unwrap();
+    let window = video_subsystem
+        .window("Snake game", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
+        .position_centered()
+        .build().unwrap();
+    let mut canvas = window.into_canvas().present_vsync().build().unwrap();
+    let mut event_pump = sdl_context.event_pump().unwrap();
+    canvas.set_scale(10.0, 10.0).unwrap();
+
+    // Canvas is initialized, nothing really controls it from above so if unwrapping 
+    // goes wrong, not much that can be done about it. Next we create the texture to 
+    // use for rendering
+    let creator = canvas.texture_creator();
+    let mut texture = creator
+        .create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
+
     // temporarily hard code in a game to test our emulator
     let game_code = vec![
         0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -37,4 +64,29 @@ fn main() {
               ")
     });
     
+}
+
+// a helper function that helps read and respond to user inputs
+fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
+    for event in event_pump.poll_iter() {
+        match event {
+            Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                std::process::exit(0)
+            },
+            Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+                cpu.mem_write(0xFF, 0x77) // write to the address that stores the last user input
+                // 0x77 is the hex value for 'w'
+            },
+            Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+                cpu.mem_write(0xFF, 0x73)
+            }
+            Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                cpu.mem_write(0xFF, 0x61)
+            }
+            Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                cpu.mem_write(0xFF, 0x64)
+            }
+            _ => {/*No other keycodes added yet, even these are specific to snake*/}
+        }
+    }
 }
