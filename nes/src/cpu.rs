@@ -355,6 +355,16 @@ impl CPU {
     // EOR - Exclusive OR: Perform an exclusive or on the accumulator (register_a) and the 
     // value held in a specified memory location
     pub fn eor(&mut self, mode: &AddressingMode) {
+
+        let mut value_to_modify: u8;
+        let mut addr: u16 = 0;
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            value_to_modify = self.register_a;
+        } else {
+            addr = self.get_operand_address(mode);
+            value_to_modify = self.mem_read(addr);
+        }
     }
 
     // LDA that takes in different AddressingModes
