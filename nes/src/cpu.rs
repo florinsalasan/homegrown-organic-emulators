@@ -477,6 +477,38 @@ impl CPU {
         return;
     }
 
+    // ORA - Logical inclusive or on the accumulator with the value stored in memory
+    // set the zero and negative flags after
+    pub fn ora(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = self.register_a | value;
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // PHA - Push Accumulator; Pushes a copy of the accumulator onto the stack
+    pub fn pha(&mut self) {
+        todo!("Implement this after writing a helper to write to the stack");
+    }
+
+    // PHP - Push Processor Status; Pushes a copy of the cpu status onto the stack
+    pub fn php(&mut self) {
+        todo!("Implement this after writing a helper to write to the stack");
+    }
+
+    // PLA - Pull Accumulator: Pull an 8 bit value from the stack and into the 
+    // accumulator, setting zero and negative flags based on the value in the accumulator
+    pub fn pla(&mut self) {
+        todo!("Implement this after writing a helper to pop/pull from the stack");
+    }
+
+    // PLP - Pull Processor Status: Pull an 8 bit value from the stack and into the 
+    // CPU status, setting zero and negative flags based on the value in the cpu status
+    pub fn plp(&mut self) {
+        todo!("Implement this after writing a helper to pop/pull from the stack");
+    }
+
     // STA, copies value from register A into memory
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
