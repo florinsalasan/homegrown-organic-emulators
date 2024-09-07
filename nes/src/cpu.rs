@@ -125,7 +125,9 @@ impl CPU {
         }
 
         // shift left one bit after saving bit 7 as the carry bit
-        if value_to_modify & CARRY_BIT == CARRY_BIT {
+        // Carry bit is the 0th bit so this won't work, probably a better way
+        // to determine if the 7th bit is set or not
+        if value_to_modify & NEGATIVE_BIT == NEGATIVE_BIT {
             self.status = self.status | CARRY_BIT
         } else {
             self.status = self.status & !CARRY_BIT;
@@ -355,16 +357,52 @@ impl CPU {
     // EOR - Exclusive OR: Perform an exclusive or on the accumulator (register_a) and the 
     // value held in a specified memory location
     pub fn eor(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
 
-        let mut value_to_modify: u8;
-        let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::Accumulator) {
-            // modify accumulator directly
-            value_to_modify = self.register_a;
-        } else {
-            addr = self.get_operand_address(mode);
-            value_to_modify = self.mem_read(addr);
-        }
+        self.register_a = self.register_a ^ value;
+
+    }
+
+    // INC - Increment the value held at a specified memory address, by one, 
+    // set the zero and negative flags from the result
+    pub fn inc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let mut value = self.mem_read(addr);
+
+        value = value.wrapping_add(1);
+
+        self.mem_write(addr, value);
+        self.set_zero_and_neg_flags(value);
+    }
+
+    // INX (Increment Register X) Adds one to the register and
+    // then sets the Zero flag, Negative flag if needed
+    pub fn inx(&mut self) {
+        self.register_x = self.register_x.wrapping_add(1);
+        self.set_zero_and_neg_flags(self.register_x);
+    }
+
+    // INY - Increment Register Y; setting flags
+    pub fn iny(&mut self) {
+        self.register_y = self.register_y.wrapping_add(1);
+        self.set_zero_and_neg_flags(self.register_y);
+    }
+
+    // JMP - Jump, setting the program counter to the address specified
+    // in memory, no flags are affected
+    pub fn jmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.program_counter = value as u16;
+    }
+
+    // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
+    // then sets the program counter to the target memory address
+    pub fn jsr(&mut self) {
+        // What the heck is the return point
+        todo!("Implement JSR");
     }
 
     // LDA that takes in different AddressingModes
@@ -378,6 +416,67 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_a);
     }
 
+    // LDX - Load register_x; setting zero and negative flags as needed.
+    pub fn ldx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_x = value;
+        self.set_zero_and_neg_flags(self.register_x);
+    }
+
+    // LDY - Load register_y; setting zero and negative flags as needed.
+    pub fn ldy(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_y = value;
+        self.set_zero_and_neg_flags(self.register_y);
+    }
+
+    // LSR - Logical Shift Right: each of the bits in the accumulator or at the memory
+    // location is shifted one place to the right, former bit 0 is stored in the carry flag,
+    // bit 7 is set to 0
+    pub fn lsr(&mut self, mode: &AddressingMode) {
+        let mut value_to_modify: u8;
+        let mut addr: u16 = 0;
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            value_to_modify = self.register_a;
+        } else {
+            addr = self.get_operand_address(mode);
+            value_to_modify = self.mem_read(addr);
+        }
+
+        // shift right one bit after saving bit 0 as the carry bit
+        if value_to_modify & CARRY_BIT == CARRY_BIT {
+            self.status = self.status | CARRY_BIT
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        // flag is set, shift it over by one, then set the zero and negative flags
+        // TODO: READ DOCUMENTATION ABOUT BIT SHIFTING TO ENSURE THIS ACTUALLY
+        // DOES WHAT I WANT IT TO DO
+        value_to_modify = value_to_modify >> 1;
+
+        self.set_zero_and_neg_flags(value_to_modify);
+
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            self.register_a = value_to_modify;
+        } else {
+            // this should only ever write to memory to the proper location, should
+            // never run if addressingMode is Accumulator
+            self.mem_write(addr, value_to_modify);
+        }
+    }
+
+    // NOP - Do nothing, just allow the program_counter to increment
+    pub fn nop(&mut self) {
+        return;
+    }
+
     // STA, copies value from register A into memory
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
@@ -389,14 +488,6 @@ impl CPU {
     pub fn tax(&mut self) {
         self.register_x = self.register_a;
         self.set_zero_and_neg_flags(self.register_x)
-    }
-
-    // 0xE8 INX (Increment Register X) Adds one to the register and
-    // then sets the Zero flag, Negative flag if needed
-    pub fn inx(&mut self) {
-        self.register_x = self.register_x.wrapping_add(1);
-        // does this actually check for the negative flag properly?
-        self.set_zero_and_neg_flags(self.register_x);
     }
 
     pub fn set_zero_and_neg_flags(&mut self, result: u8) {
