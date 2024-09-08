@@ -18,7 +18,7 @@ const ZERO_BIT: u8 = 0b0000_0010;
 const INTERRUPT_DISABLE_BIT: u8 = 0b0000_0100;
 const DECIMAL_MODE: u8 = 0b0000_1000; // not used on nes, still an instruction that clears it
 const BREAK_BIT: u8 = 0b0001_0000;
-const NOT_A_FLAG_BIT: u8 = 0b0010_0000; // Doesn't represent any flag
+// const NOT_A_FLAG_BIT: u8 = 0b0010_0000; // Doesn't represent any flag
 const OVERFLOW_BIT: u8 = 0b0100_0000;
 const NEGATIVE_BIT: u8 = 0b1000_0000;
 
@@ -507,6 +507,42 @@ impl CPU {
     // CPU status, setting zero and negative flags based on the value in the cpu status
     pub fn plp(&mut self) {
         todo!("Implement this after writing a helper to pop/pull from the stack");
+    }
+
+    // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place 
+    // to the left. Bit 0 is filled with the current value of the carry flag whilst the old bit 
+    // 7 becomes the new carry flag value
+    // TODO: MODIFY THE METHOD BELOW TO DO THE DESCRIPTION, FEELING TOO LAZY ATM
+    pub fn rol(&mut self, mode: &AddressingMode) {
+        let mut value_to_modify: u8;
+        let mut addr: u16 = 0;
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            value_to_modify = self.register_a;
+        } else {
+            addr = self.get_operand_address(mode);
+            value_to_modify = self.mem_read(addr);
+        }
+
+        // shift right one bit after saving bit 0 as the carry bit
+        if value_to_modify & CARRY_BIT == CARRY_BIT {
+            self.status = self.status | CARRY_BIT
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        value_to_modify = value_to_modify >> 1;
+
+        self.set_zero_and_neg_flags(value_to_modify);
+
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            self.register_a = value_to_modify;
+        } else {
+            // this should only ever write to memory to the proper location, should
+            // never run if addressingMode is Accumulator
+            self.mem_write(addr, value_to_modify);
+        }
     }
 
     // STA, copies value from register A into memory
