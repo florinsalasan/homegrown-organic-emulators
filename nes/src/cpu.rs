@@ -511,9 +511,59 @@ impl CPU {
 
     // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place 
     // to the left. Bit 0 is filled with the current value of the carry flag whilst the old bit 
-    // 7 becomes the new carry flag value
-    // TODO: MODIFY THE METHOD BELOW TO DO THE DESCRIPTION, FEELING TOO LAZY ATM
+    // 7 becomes the new carry flag value. TODO: Double check the order of operations here
+    // this is broken, i misread the bits that are set as carry flag and which is filled with old
+    // carry flag, redo the shifting.
     pub fn rol(&mut self, mode: &AddressingMode) {
+        let mut value_to_modify: u8;
+        let mut addr: u16 = 0;
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            value_to_modify = self.register_a;
+        } else {
+            addr = self.get_operand_address(mode);
+            value_to_modify = self.mem_read(addr);
+        }
+
+        // shift left one bit after saving bit 0 as the carry bit
+        if value_to_modify & CARRY_BIT == CARRY_BIT {
+            self.status = self.status | CARRY_BIT
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        let is_carry_set: bool = self.status & CARRY_BIT == CARRY_BIT;
+        
+        // saved the status of the bool, then we update the carry bit with the 7th bit
+        if value_to_modify & (1 << 7)  == 1 {
+            // the 7th bit is on, change status so that carry_bit is set
+            self.status = self.status | CARRY_BIT;
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        // Now we shift left and set the 0th bit to the saved value from earlier
+        value_to_modify = value_to_modify << 1;
+        if is_carry_set {
+            value_to_modify = value_to_modify | CARRY_BIT;
+        } // else rust should have already set it to zero when shifting, I think
+        // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
+
+        self.set_zero_and_neg_flags(value_to_modify);
+
+        if matches!(mode, AddressingMode::Accumulator) {
+            // modify accumulator directly
+            self.register_a = value_to_modify;
+        } else {
+            // this should only ever write to memory to the proper location, should
+            // never run if addressingMode is Accumulator
+            self.mem_write(addr, value_to_modify);
+        }
+    }
+
+    // ROR - rotate right, same as rol, only shift right, fill bit 7 with carry flag, and 
+    // old bit 0 is new carry flag. This is also broken possibly, redo shifts and flags
+    pub fn ror(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
         if matches!(mode, AddressingMode::Accumulator) {
@@ -531,7 +581,22 @@ impl CPU {
             self.status = self.status & !CARRY_BIT;
         }
 
-        value_to_modify = value_to_modify >> 1;
+        let is_carry_set: bool = self.status & CARRY_BIT == CARRY_BIT;
+        
+        // saved the status of the bool, then we update the carry bit with the 7th bit
+        if value_to_modify & (1 >> 7)  == 1 {
+            // the 7th bit is on, change status so that carry_bit is set
+            self.status = self.status | CARRY_BIT;
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        // Now we shift left and set the 0th bit to the saved value from earlier
+        value_to_modify = value_to_modify << 1;
+        if is_carry_set {
+            value_to_modify = value_to_modify | CARRY_BIT;
+        } // else rust should have already set it to zero when shifting, I think
+        // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
 
         self.set_zero_and_neg_flags(value_to_modify);
 
@@ -545,17 +610,132 @@ impl CPU {
         }
     }
 
+    // RTI - Return from Interrupt: Used at the end of an interrupt processing routine,
+    // pulls the processor flags from the stack followed by the program counter
+    pub fn rti(&mut self) {
+        todo!("Implement RTI, asking to read values from stack so still need the stack
+                read and write helpers");
+    }
+
+    // RTS - Return from subroutine: Used at the end of a subroutine,
+    // pulls the program counter (minus 1) from the stack
+    pub fn rts(&mut self) {
+        todo!("Implement RTS, asking to read values from stack so still need the stack
+                read and write helpers");
+    }
+
+    // SBC - Subtract with Carry: Subtracts the contents of a memory location to the accumulator 
+    // with the not of the carry bit, if overflow occurs, the carry bit is clear, enabling multi 
+    // byte subtraction to be performed. (A - M -(1-C));
+    pub fn sbc(&mut self, mode: &AddressingMode) {
+        // A - B = A + (-B) = A + (!B + 1);
+        // Use the code from adc, and just change the value read from memory
+        let addr = self.get_operand_address(mode);
+        let value_to_add = !self.mem_read(addr) + 1;
+
+        // save the sum, to be able to properly set the necessary flags
+        let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 } as u16);
+
+        let carry = sum > 0xff;
+
+        if carry {
+            self.status = self.status | CARRY_BIT; 
+        } else {
+            self.status = self.status & !CARRY_BIT;
+        }
+
+        let result  = sum as u8;
+
+        // I don't understand what this is looking for, but there is an article
+        // describing that overflow occurs when this LHS is nonzero, and I choose to
+        // believe that he is correct as he explains the bit operations in depth.
+        if (value_to_add ^ result) & (result ^ self.register_a) & 0x80 != 0 {
+            self.status = self.status | OVERFLOW_BIT; 
+        } else {
+            // keep all of the other status flags while turning off the overflow_bit
+            self.status = self.status & !OVERFLOW_BIT; 
+        }
+
+        // store the result to register_a
+        self.register_a = result;
+
+        // sets zero and negative flags, still need to set overflow and carry flags
+        self.set_zero_and_neg_flags(self.register_a);
+        // all 4 flags that can be set by this instruction are set
+    }
+
+    // SEC - Set carry flag: set the carry flag to 1;
+    pub fn sec(&mut self) {
+        self.status = self.status | CARRY_BIT;
+    }
+
+    // SED - Set decimal flag;
+    pub fn sed(&mut self) {
+        self.status = self.status | DECIMAL_MODE;
+    }
+
+    // SEI - Set interrupt disable flag;
+    pub fn sei(&mut self) {
+        self.status = self.status | INTERRUPT_DISABLE_BIT;
+    }
+
     // STA, copies value from register A into memory
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(addr, self.register_a);
     }
 
+    // STX, copies value from register X into memory
+    pub fn stx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.register_x);
+    }
+
+    // STY, copies value from register Y into memory
+    pub fn sty(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.register_y);
+    }
+
     // 0xAA TAX (Transfer accumulator to register X) set register_x
     // to the value in the accumulator, only one addressing mode
     pub fn tax(&mut self) {
         self.register_x = self.register_a;
-        self.set_zero_and_neg_flags(self.register_x)
+        self.set_zero_and_neg_flags(self.register_x);
+    }
+
+    // TAY (Transfer accumulator to register Y) set register_y
+    // to the value in the accumulator, only one addressing mode
+    pub fn tay(&mut self) {
+        self.register_y = self.register_a;
+        self.set_zero_and_neg_flags(self.register_y);
+    }
+
+    // TSX - transfer stack pointer to X
+    // copies current contents of the stack register into the X register, setting 
+    // zero and negative flags
+    pub fn tsx(&mut self) {
+        self.register_x = self.mem_read(self.stack_pointer);
+        self.set_zero_and_neg_flags(self.register_x);
+    }
+
+    // TXA - transfer x to accumulator;
+    // Copies the current contents of the x register into the accumulator, set zero & neg flags
+    pub fn txa(&mut self) {
+        self.register_a = self.register_x;
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+    
+    // TXS - transfer x to stack pointer;
+    // Copies the current contents of the x register into the stack register 
+    pub fn txs(&mut self) {
+        self.mem_write(self.stack_pointer, self.register_x);
+    }
+
+    // TYA transfer reg_y to accumulator; setting flags as needed
+    pub fn tya(&mut self) {
+        self.register_a = self.register_y;
+        self.set_zero_and_neg_flags(self.register_a);
     }
 
     pub fn set_zero_and_neg_flags(&mut self, result: u8) {
