@@ -50,6 +50,8 @@ pub enum AddressingMode {
     NoneAddressing,
 }
 
+// Take some of the common functions and rewrite them into traits.
+
 impl CPU {
     pub fn new() -> Self {
         CPU {
@@ -401,8 +403,7 @@ impl CPU {
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
     // then sets the program counter to the target memory address
     pub fn jsr(&mut self) {
-        // What the heck is the return point
-        todo!("Implement JSR");
+
     }
 
     // LDA that takes in different AddressingModes
@@ -780,9 +781,9 @@ impl CPU {
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
 
-    pub fn load(&mut self, game_code: Vec<u8>) {
+    pub fn load(&mut self, program: Vec<u8>) {
         // Then NES typically uses 0x8000-0xFFFF for loading in the cartridge ROM
-        self.memory[0x8000 .. (0x0600 + game_code.len())].copy_from_slice(&game_code[..]);
+        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x0600)
     }
 
@@ -868,10 +869,10 @@ impl CPU {
             }
 
             AddressingMode::NoneAddressing => {
-                panic!("mode {:?} is not supported", mode);
                 // replace the panic with something else maybe? No reason for 
                 // program to panic if an addressing mode isn't needed, for example 
                 // TAX transferring the accumulator value to register_x
+                return 0x00;
             }
         }
     }
@@ -924,13 +925,13 @@ impl CPU {
                 }
                 
                 // BCC
-                0x90 => todo!("self.bcc(),"),
+                0x90 => self.bcc(),
                 
                 // BCS
-                0xB0 => todo!("self.bcs(),"),
+                0xB0 => self.bcs(),
                 
                 // BEQ
-                0xF0 => todo!("self.beq(),"),
+                0xF0 => self.beq(),
                 
                 // BIT opcodes
                 0x24 | 0x2C => {
@@ -939,102 +940,88 @@ impl CPU {
                 }
 
                 // BMI
-                0x30 => todo!("self.bmi(),"),
+                0x30 => self.bmi(),
 
                 // BNE
-                0xD0 => todo!("self.bne(),"),
+                0xD0 => self.bne(),
 
                 // BPL
-                0x10 => todo!("self.bpl(),"),
+                0x10 => self.bpl(),
                 
                 // BVC
-                0x50 => todo!("self.bvc(),"),
+                0x50 => self.bvc(),
 
                 // BVS
-                0x70 => todo!("self.bvs(),"),
+                0x70 => self.bvs(),
 
                 // CLC
-                0x18 => todo!("self.clc(),"),
+                0x18 => self.clc(),
 
                 // CLD
-                0xD8 => todo!("self.cld(),"),
+                0xD8 => self.cld(),
 
                 // CLI
-                0x58 => todo!("self.cli(),"),
+                0x58 => self.cli(),
 
                 // CLV
-                0xB8 => todo!("self.clv(),"),
+                0xB8 => self.clv(),
 
                 // CMP opcodes
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => {
-                    todo!("
                     self.cmp(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // CPX opcodes
                 0xE0 | 0xE4 | 0xEC => {
-                    todo!("
                     self.cpx(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // CPY opcodes
                 0xC0 | 0xC4 | 0xCC => {
-                    todo!("
                     self.cpy(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // DEC opcodes
                 0xC6 | 0xD6 | 0xCE | 0xDE => {
-                    todo!("
                     self.dec(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // DEX
-                0xCA => todo!("self.dex(),"),
+                0xCA => self.dex(),
 
                 // DEY
-                0x88 => todo!("self.dex(),"),
+                0x88 => self.dex(),
                 
                 // EOR opcodes
                 0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
-                    todo!("
                     self.eor(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // INC opcodes
                 0xE6 | 0xF6 | 0xEE | 0xFE => {
-                    todo!("
                     self.inc(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // INX
                 0xE8 => self.inx(),
                 
                 // INY
-                0xC8 => todo!("self.iny(),"),
+                0xC8 => self.iny(),
 
                 // JMP 
                 0x4C | 0x6C => {
-                    todo!("
                     self.jmp(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // JSR
-                0x20 => todo!("self.jsr(),"),
+                0x20 => self.jsr(),
 
                 // LDA opcodes
                 0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
@@ -1044,89 +1031,75 @@ impl CPU {
                 
                 // LDX opcodes
                 0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => {
-                    todo!("
                     self.ldx(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // LDY opcodes
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => {
-                    todo!("
                     self.ldy(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // LSR opcodes
                 0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
-                    todo!("
                     self.lsr(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // NOP
-                0xEA => todo!("self.nop(),"),
+                0xEA => self.nop(),
 
                 // ORA opcodes
                 0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
-                    todo!("
                     self.ora(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // PHA
-                0x48 => todo!("self.pha(),"),
+                0x48 => self.pha(),
                 
                 // PHP
-                0x08 => todo!("self.php(),"),
+                0x08 => self.php(),
 
                 // PLA
-                0x68 => todo!("self.pla(),"),
+                0x68 => self.pla(),
 
                 // PLP
-                0x28 => todo!("self.plp(),"),
+                0x28 => self.plp(),
                 
                 // ROL opcodes
                 0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
-                    todo!("
                     self.rol(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
                 
                 // ROR opcodes
                 0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
-                    todo!("
                     self.ror(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // RTI
-                0x40 => todo!("self.rti(),"),
+                0x40 => self.rti(),
 
                 // RTS
-                0x60 => todo!("self.rts(),"),
+                0x60 => self.rts(),
 
                 // SBC opcodes
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => {
-                    todo!("
                     self.sbc(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // SEC
-                0x38 => todo!("self.sec(),"),
+                0x38 => self.sec(),
 
                 // SED
-                0xF8 => todo!("self.sed(),"),
+                0xF8 => self.sed(),
 
                 // SEI
-                0x78 => todo!("self.sei(),"),
+                0x78 => self.sei(),
 
                 // STA opcodes
                 0x81 | 0x85 | 0x8D | 0x91 | 0x95 | 0x99 | 0x9D => {
@@ -1136,37 +1109,33 @@ impl CPU {
 
                 // STX opcodes
                 0x86 | 0x96 | 0x8E => {
-                    todo!("
                     self.stx(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // STY opcodes
                 0x84 | 0x94 | 0x8C => {
-                    todo!("
                     self.sty(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
-                    ")
                 }
 
                 // TAX
                 0xAA => self.tax(),
 
                 // TAY
-                0xA8 => todo!("self.tay(),"),
+                0xA8 => self.tay(),
 
                 // TSX
-                0xBA => todo!("self.tsx(),"),
+                0xBA => self.tsx(),
 
                 // TXA
-                0x8A => todo!("self.txa(),"),
+                0x8A => self.txa(),
 
                 // TXS
-                0x9A => todo!("self.txs(),"),
+                0x9A => self.txs(),
 
                 // TYA
-                0x98 => todo!("self.tya(),"),
+                0x98 => self.tya(),
 
                 _ => {
                     todo!("Build out the massive switch statement for opcodes, this time it broke on {:} ", opcode)
@@ -1317,5 +1286,50 @@ mod tests {
         // STA writes to the start of memory, honestly not sure if that's what it's
         // supposed to do
         assert_eq!(cpu.memory[0x00], 0x15);
+    }
+
+     #[test]
+    fn test_0xa9_lda_immediate_load_data_2() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.register_a, 5);
+        assert!(cpu.status & 0b0000_0010 == 0b00);
+        assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xaa_tax_move_a_to_x() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 10;
+        cpu.load_and_run(vec![0xaa, 0x00]);
+
+        assert_eq!(cpu.register_x, 10)
+    }
+
+    #[test]
+    fn test_5_ops_working_together() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 0xc1)
+    }
+
+    #[test]
+    fn test_inx_overflow() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0xff;
+        cpu.load_and_run(vec![0xe8, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 1)
+    }
+
+    #[test]
+    fn test_lda_from_memory() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x55);
     }
 }

@@ -249,7 +249,7 @@ pub static OPCODES_HASHMAP: OnceLock<HashMap<u8, OpCode>> = OnceLock::new();
 pub fn init_opcodes_hashmap_helper() ->  Option<HashMap<u8, OpCode<'static>>>{
     let mut opcodes_map: HashMap<u8, OpCode<'_>> = HashMap::new();
     let opcode_list = ALLOPCODES.get().unwrap();
-    print!("{:?}", opcode_list);
+    // print!("{:?}", opcode_list);
     for opcode in opcode_list {
         let new_opcode = opcode.clone();
         opcodes_map.insert(new_opcode.opcode_num, new_opcode);

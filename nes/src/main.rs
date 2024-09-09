@@ -2,6 +2,8 @@ pub mod cpu;
 use crate::cpu::CPU;
 pub mod opcodes;
 
+use rand::prelude::*;
+
 extern crate sdl2;
 
 use sdl2::event::Event;
@@ -58,10 +60,21 @@ fn main() {
     cpu.load(game_code);
     cpu.reset();
 
+    let mut screen_state = [0 as u8; 32 * 3 * 32];
+    let mut rng = rand::thread_rng();
+
     cpu.run_with_callback(move |cpu| {
-        todo!("read user input and write it to memory[0xFF], update memory[0xFE] with
-               new Random Number, read memory mapped screen state, render screen state
-              ")
+        handle_user_input(cpu, &mut event_pump);
+        // inclusive range for rng
+        cpu.mem_write(0xfe, rng.gen_range(1..=16));
+
+        if read_screen_state(cpu, &mut screen_state) {
+            texture.update(None, &screen_state, 32 * 3).unwrap();
+            canvas.copy(&texture, None, None).unwrap();
+            canvas.present();
+    }
+
+    ::std::thread::sleep(std::time::Duration::new(0, 70_000));
     });
     
 }
