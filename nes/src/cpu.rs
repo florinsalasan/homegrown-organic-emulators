@@ -51,6 +51,34 @@ pub enum AddressingMode {
 }
 
 // Take some of the common functions and rewrite them into traits.
+pub trait Memory {
+    fn mem_read(&self, addr: u16) -> u8;
+
+    fn mem_write(&mut self, addr: u16, data: u8);
+
+    fn mem_read_u16(&self, pos: u16) -> u16 {
+        let lo = self.mem_read(pos) as u16;
+        let hi = self.mem_read(pos + 1) as u16;
+        (hi << 8) | (lo as u16)
+    }
+
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xFF) as u8;
+        self.mem_write(pos, lo);
+        self.mem_write(pos + 1, hi);
+    }
+}
+
+impl Memory for CPU {
+    fn mem_read(&self, addr: u16) -> u8 {
+        self.memory[addr as usize]
+    }
+
+    fn mem_write(&mut self, addr: u16, data: u8) {
+        self.memory[addr as usize] = data;
+    }
+}
 
 impl CPU {
     pub fn new() -> Self {
@@ -65,6 +93,119 @@ impl CPU {
             memory: [0; 0xFFFF],
         }
     }
+
+    fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
+
+        match mode {
+            AddressingMode::Immediate => self.program_counter,
+
+            AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
+
+            AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
+            
+            AddressingMode::ZeroPage_X => {
+                let pos = self.mem_read(self.program_counter);
+                let addr = pos.wrapping_add(self.register_x) as u16;
+                addr
+            }
+
+            AddressingMode::ZeroPage_Y => {
+                let pos = self.mem_read(self.program_counter);
+                let addr = pos.wrapping_add(self.register_y) as u16;
+                addr
+            }
+
+            AddressingMode::Absolute_X => {
+                let base = self.mem_read_u16(self.program_counter);
+                let addr = base.wrapping_add(self.register_x as u16);
+                addr
+            }
+
+            AddressingMode::Absolute_Y => {
+                let base = self.mem_read_u16(self.program_counter);
+                let addr = base.wrapping_add(self.register_y as u16);
+                addr
+            }
+            
+            AddressingMode::Indirect_X => {
+                let base = self.mem_read(self.program_counter);
+
+                let ptr: u8 = (base as u8).wrapping_add(self.register_x);
+                let lo = self.mem_read(ptr as u16);
+                let hi = self.mem_read(ptr.wrapping_add(1) as u16);
+                (hi as u16) << 8 | (lo as u16)
+            }
+
+            AddressingMode::Indirect_Y => {
+                let base = self.mem_read(self.program_counter);
+
+                let lo = self.mem_read(base as u16);
+                let hi = self.mem_read((base as u16).wrapping_add(1) as u16);
+                let deref_base = (hi as u16) << 8 | (lo as u16);
+                let deref = deref_base.wrapping_add(self.register_y as u16);
+                deref
+            }
+
+            AddressingMode::Relative => {
+                todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
+                offset to add to the program counter if a condition is true.");
+            }
+
+            AddressingMode::Accumulator => {
+                // This just modifies the accumulator directly, shouldn't really return anything
+                // here right?, Just throw in a check to see if the addressing mode is Accumulator 
+                // in any functions that can modify it directly 
+                return 0x00;
+            }
+
+            AddressingMode::NoneAddressing => {
+                // replace the panic with something else maybe? No reason for 
+                // program to panic if an addressing mode isn't needed, for example 
+                // TAX transferring the accumulator value to register_x
+                return 0x00;
+            }
+        }
+    }
+
+    // read and pop a value off of the stack, called pulling on nesdev
+    pub fn stack_pop(&mut self) -> u8 {
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1); // Double check this
+        // there is an implementation that uses wrapping_add for some reason.
+        self.mem_read(self.stack_pointer as u16) // stack_pointer is a mem address directly
+    }
+
+    pub fn stack_push(&mut self, data: u8) {
+        self.mem_write(self.stack_pointer, data);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1); // In implmentations this 
+        // is subtracted instead of adding, even though we're pushing to the stack 
+    }
+
+    pub fn stack_push_u16(&mut self, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xFF) as u8;
+        self.stack_push(lo);
+        self.stack_push(hi);
+    }
+
+    pub fn stack_pop_u16(&mut self) -> u16 {
+        let lo = self.stack_pop() as u16;
+        let hi = self.stack_pop() as u16;
+
+        hi << 8 | lo
+    }
+
+    pub fn branch(&mut self, condition: bool) {
+        if condition {
+            let jump: i8 = self.mem_read(self.program_counter) as i8;
+            let jump_addr = self
+                .program_counter
+                .wrapping_add(1)
+                .wrapping_add(jump as u16);
+
+            self.program_counter = jump_addr;
+        }
+    }
+
     // ADC, add with carry, reading the value of a given address, add the value 
     // to the accumulator with the carry bit, if overflow occurs, carry bit is
     // set enabling multiple byte addition
@@ -75,7 +216,7 @@ impl CPU {
         // save the sum, to be able to properly set the necessary flags
         let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 } as u16);
 
-        let carry = sum > 0xff;
+        let carry = sum > 0xFF;
 
         if carry {
             self.status = self.status | CARRY_BIT; 
@@ -222,7 +363,7 @@ impl CPU {
     // BPL - Branch if Positive: if the negative flag is clear then add the relative 
     // displacement to the program counter to cause a branch to a new location
     pub fn bpl(&mut self) {
-        todo!("Implement BPL");
+        self.branch(self.status & NEGATIVE_BIT != NEGATIVE_BIT);
     }
     
     // BRK - Force interrupt: Program counter and processor status are pushed on the stack
@@ -403,7 +544,9 @@ impl CPU {
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
     // then sets the program counter to the target memory address
     pub fn jsr(&mut self) {
-
+        self.stack_push_u16(self.program_counter + 2 - 1);
+        let target_address = self.mem_read_u16(self.program_counter);
+        self.program_counter = target_address // Why does this not need a semi colon again?
     }
 
     // LDA that takes in different AddressingModes
@@ -621,8 +764,7 @@ impl CPU {
     // RTS - Return from subroutine: Used at the end of a subroutine,
     // pulls the program counter (minus 1) from the stack
     pub fn rts(&mut self) {
-        todo!("Implement RTS, asking to read values from stack so still need the stack
-                read and write helpers");
+        self.program_counter = self.stack_pop_u16() + 1;
     }
 
     // SBC - Subtract with Carry: Subtracts the contents of a memory location to the accumulator 
@@ -802,79 +944,6 @@ impl CPU {
         let lo = (data & 0xFF) as u8;
         self.mem_write(pos, lo);
         self.mem_write(pos + 1, hi);
-    }
-
-    fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
-
-        match mode {
-            AddressingMode::Immediate => self.program_counter,
-
-            AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
-
-            AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
-            
-            AddressingMode::ZeroPage_X => {
-                let pos = self.mem_read(self.program_counter);
-                let addr = pos.wrapping_add(self.register_x) as u16;
-                addr
-            }
-
-            AddressingMode::ZeroPage_Y => {
-                let pos = self.mem_read(self.program_counter);
-                let addr = pos.wrapping_add(self.register_y) as u16;
-                addr
-            }
-
-            AddressingMode::Absolute_X => {
-                let base = self.mem_read_u16(self.program_counter);
-                let addr = base.wrapping_add(self.register_x as u16);
-                addr
-            }
-
-            AddressingMode::Absolute_Y => {
-                let base = self.mem_read_u16(self.program_counter);
-                let addr = base.wrapping_add(self.register_y as u16);
-                addr
-            }
-            
-            AddressingMode::Indirect_X => {
-                let base = self.mem_read(self.program_counter);
-
-                let ptr: u8 = (base as u8).wrapping_add(self.register_x);
-                let lo = self.mem_read(ptr as u16);
-                let hi = self.mem_read(ptr.wrapping_add(1) as u16);
-                (hi as u16) << 8 | (lo as u16)
-            }
-
-            AddressingMode::Indirect_Y => {
-                let base = self.mem_read(self.program_counter);
-
-                let lo = self.mem_read(base as u16);
-                let hi = self.mem_read((base as u16).wrapping_add(1) as u16);
-                let deref_base = (hi as u16) << 8 | (lo as u16);
-                let deref = deref_base.wrapping_add(self.register_y as u16);
-                deref
-            }
-
-            AddressingMode::Relative => {
-                todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
-                offset to add to the program counter if a condition is true.");
-            }
-
-            AddressingMode::Accumulator => {
-                // This just modifies the accumulator directly, shouldn't really return anything
-                // here right?, Just throw in a check to see if the addressing mode is Accumulator 
-                // in any functions that can modify it directly 
-                return 0x00;
-            }
-
-            AddressingMode::NoneAddressing => {
-                // replace the panic with something else maybe? No reason for 
-                // program to panic if an addressing mode isn't needed, for example 
-                // TAX transferring the accumulator value to register_x
-                return 0x00;
-            }
-        }
     }
 
     // The main CPU loop is:
