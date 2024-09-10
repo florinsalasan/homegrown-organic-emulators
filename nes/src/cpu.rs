@@ -29,7 +29,7 @@ pub struct CPU {
     pub status: u8, 
     pub program_counter: u16,
     pub stack_pointer: u16,
-    memory: [u8; 0xFFFF]
+    memory: [u8; 0xFFFF + 1]
 }
 
 #[derive(Debug)]
@@ -90,7 +90,7 @@ impl CPU {
             program_counter: 0,
             stack_pointer: 0x0100, // The stack in the nes is 256 bytes and stored in 
             // memory between addresses 0x0100 and 0x01FF
-            memory: [0; 0xFFFF],
+            memory: [0; 0xFFFF + 1],
         }
     }
 
@@ -351,13 +351,13 @@ impl CPU {
     // just like the other branch instructions I need to implement relative addressing and
     // find out what is meant by branching.
     pub fn bmi(&mut self) {
-        todo!("Implement BMI");
+        self.branch(self.status & NEGATIVE_BIT == NEGATIVE_BIT);
     }
 
     // BNE - Branch if not equal: if zero flag is clear, add relative displacement to the 
     // program counter to cause a branch to a new location.
     pub fn bne(&mut self) {
-        todo!("Implement BNE");
+        self.branch(self.status & ZERO_BIT != ZERO_BIT);
     }
 
     // BPL - Branch if Positive: if the negative flag is clear then add the relative 
