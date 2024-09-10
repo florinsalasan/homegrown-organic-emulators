@@ -295,20 +295,20 @@ impl CPU {
     // displacement to the program counter to cause a branch to a new location
     // absolutely no idea what that means
     pub fn bcc(&mut self) {
-        todo!("Implement BCC");
+        self.branch(self.status & CARRY_BIT != CARRY_BIT);
     }
 
     // BCS - Branch if carry set: If the carry flag is set, add the relative displacement
     // to the program counter to cause a branch to a new location assuming this is the
     // opposite of BCC
     pub fn bcs(&mut self) {
-        todo!("Implement BCS");
+        self.branch(self.status & CARRY_BIT == CARRY_BIT);
     }
 
     // BEQ - Branch if equal: if the zero flag is set then add the relative displacement
     // to the program counter to cause a branch to a new location
     pub fn beq(&mut self) {
-        todo!("Implement BEQ");
+        self.branch(self.status & ZERO_BIT == ZERO_BIT);
     }
 
     // BIT - bit test: used to test if one or more bits are set in a target memory location.
