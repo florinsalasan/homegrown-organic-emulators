@@ -22,6 +22,7 @@ const BREAK_BIT: u8 = 0b0001_0000;
 const OVERFLOW_BIT: u8 = 0b0100_0000;
 const NEGATIVE_BIT: u8 = 0b1000_0000;
 
+#[derive(Debug)]
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
@@ -31,6 +32,8 @@ pub struct CPU {
     pub stack_pointer: u16,
     memory: [u8; 0xFFFF + 1]
 }
+
+const STACK_RESET_CODE: u8 = 0xFD;
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -148,7 +151,7 @@ impl CPU {
 
             AddressingMode::Relative => {
                 todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
-                offset to add to the program counter if a condition is true.");
+                offset to add to the program counter if a condition is true. Maybe not needed");
             }
 
             AddressingMode::Accumulator => {
@@ -249,7 +252,7 @@ impl CPU {
     pub fn and(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        self.register_a &= value; // surely this is too simple
+        self.register_a = self.register_a & value; 
         self.set_zero_and_neg_flags(self.register_a);
     }
 
@@ -371,8 +374,8 @@ impl CPU {
     // the status is set to one.
     pub fn brk(&mut self) {
         self.mem_write_u16(self.stack_pointer, self.program_counter);
-        self.mem_write(self.stack_pointer + 2, self.status);
-        self.stack_pointer += 3;
+        self.mem_write(self.stack_pointer.wrapping_add(2), self.status);
+        self.stack_pointer = self.stack_pointer.wrapping_add(3);
         self.status = self.status | BREAK_BIT;
         self.program_counter = 0xFFFE;
         return 
@@ -504,7 +507,7 @@ impl CPU {
         let value = self.mem_read(addr);
 
         self.register_a = self.register_a ^ value;
-
+        self.set_zero_and_neg_flags(self.register_a);
     }
 
     // INC - Increment the value held at a specified memory address, by one, 
@@ -943,7 +946,7 @@ impl CPU {
         let hi = (data >> 8) as u8;
         let lo = (data & 0xFF) as u8;
         self.mem_write(pos, lo);
-        self.mem_write(pos + 1, hi);
+        self.mem_write(pos.wrapping_add(1), hi);
     }
 
     // The main CPU loop is:
@@ -969,7 +972,7 @@ impl CPU {
             callback(self);
 
             let opcode = self.mem_read(self.program_counter);
-            self.program_counter += 1;
+            self.program_counter = self.program_counter.wrapping_add(1);
 
             match opcode {
                 // BRK 
@@ -1207,7 +1210,9 @@ impl CPU {
                 0x98 => self.tya(),
 
                 _ => {
-                    todo!("Build out the massive switch statement for opcodes, this time it broke on {:} ", opcode)
+                    self.program_counter = self.program_counter.wrapping_add(1);
+                    print!("Build out the massive switch statement for opcodes, this time it broke on {:#04x} \n", opcode);
+                    return;
                 }
             }
         }
@@ -1369,8 +1374,7 @@ mod tests {
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut cpu = CPU::new();
-        cpu.register_a = 10;
-        cpu.load_and_run(vec![0xaa, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0x0a, 0xaa, 0x00]);
 
         assert_eq!(cpu.register_x, 10)
     }
@@ -1386,8 +1390,7 @@ mod tests {
     #[test]
     fn test_inx_overflow() {
         let mut cpu = CPU::new();
-        cpu.register_x = 0xff;
-        cpu.load_and_run(vec![0xe8, 0xe8, 0x00]);
+        cpu.load_and_run(vec![0xa2, 0xff, 0xe8, 0xe8, 0x00]);
 
         assert_eq!(cpu.register_x, 1)
     }
