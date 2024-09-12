@@ -33,7 +33,8 @@ pub struct CPU {
     memory: [u8; 0xFFFF + 1]
 }
 
-const STACK_RESET_CODE: u8 = 0xFD;
+const STACK: u16 = 0x0100; // Starting address for the stack in the NES in memory
+const STACK_RESET_CODE: u16 = 0xFD;
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -89,9 +90,9 @@ impl CPU {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0,
+            status: 0 | INTERRUPT_DISABLE_BIT,
             program_counter: 0,
-            stack_pointer: 0x0100, // The stack in the nes is 256 bytes and stored in 
+            stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in 
             // memory between addresses 0x0100 and 0x01FF
             memory: [0; 0xFFFF + 1],
         }
