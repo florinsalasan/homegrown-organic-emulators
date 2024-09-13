@@ -29,12 +29,13 @@ pub struct CPU {
     pub register_y: u8,
     pub status: u8, 
     pub program_counter: u16,
-    pub stack_pointer: u16,
+    pub stack_pointer: u8, // This points to the top of the stack, decrementing
+    // when a byte of data is pushed to the stack and incrementing when popped
     memory: [u8; 0xFFFF + 1]
 }
 
 const STACK: u16 = 0x0100; // Starting address for the stack in the NES in memory
-const STACK_RESET_CODE: u16 = 0xFD;
+const STACK_RESET_CODE: u8 = 0xFD;
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -87,10 +88,10 @@ impl Memory for CPU {
 impl CPU {
     pub fn new() -> Self {
         CPU {
-            register_a: 0,
+            register_a: 0, // accumulator but I can't be bothered to change the name atm
             register_x: 0,
             register_y: 0,
-            status: 0 | INTERRUPT_DISABLE_BIT,
+            status: 0 | INTERRUPT_DISABLE_BIT, // 8 bit register, representing 7 flags
             program_counter: 0,
             stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in 
             // memory between addresses 0x0100 and 0x01FF
@@ -173,15 +174,13 @@ impl CPU {
 
     // read and pop a value off of the stack, called pulling on nesdev
     pub fn stack_pop(&mut self) -> u8 {
-        self.stack_pointer = self.stack_pointer.wrapping_sub(1); // Double check this
-        // there is an implementation that uses wrapping_add for some reason.
+        self.stack_pointer = self.stack_pointer.wrapping_add(1); 
         self.mem_read(self.stack_pointer as u16) // stack_pointer is a mem address directly
     }
 
     pub fn stack_push(&mut self, data: u8) {
-        self.mem_write(self.stack_pointer, data);
-        self.stack_pointer = self.stack_pointer.wrapping_add(1); // In implmentations this 
-        // is subtracted instead of adding, even though we're pushing to the stack 
+        self.mem_write(self.stack_pointer.into(), data);
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1); 
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
@@ -374,8 +373,8 @@ impl CPU {
     // then the IRQ interrupt vector at $FFFE/F is loaded into the PC and the break flag in
     // the status is set to one.
     pub fn brk(&mut self) {
-        self.mem_write_u16(self.stack_pointer, self.program_counter);
-        self.mem_write(self.stack_pointer.wrapping_add(2), self.status);
+        self.mem_write_u16(self.stack_pointer.into(), self.program_counter);
+        self.mem_write(self.stack_pointer.wrapping_add(2).into(), self.status);
         self.stack_pointer = self.stack_pointer.wrapping_add(3);
         self.status = self.status | BREAK_BIT;
         self.program_counter = 0xFFFE;
@@ -862,7 +861,7 @@ impl CPU {
     // copies current contents of the stack register into the X register, setting 
     // zero and negative flags
     pub fn tsx(&mut self) {
-        self.register_x = self.mem_read(self.stack_pointer);
+        self.register_x = self.mem_read(self.stack_pointer.into());
         self.set_zero_and_neg_flags(self.register_x);
     }
 
@@ -876,7 +875,7 @@ impl CPU {
     // TXS - transfer x to stack pointer;
     // Copies the current contents of the x register into the stack register 
     pub fn txs(&mut self) {
-        self.mem_write(self.stack_pointer, self.register_x);
+        self.mem_write(self.stack_pointer.into(), self.register_x);
     }
 
     // TYA transfer reg_y to accumulator; setting flags as needed
