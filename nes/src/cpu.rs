@@ -91,7 +91,7 @@ impl CPU {
             register_a: 0, // accumulator but I can't be bothered to change the name atm
             register_x: 0,
             register_y: 0,
-            status: 0 | INTERRUPT_DISABLE_BIT, // 8 bit register, representing 7 flags
+            status: 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT, // 8 bit register, representing 7 flags
             program_counter: 0,
             stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in 
             // memory between addresses 0x0100 and 0x01FF
@@ -175,19 +175,19 @@ impl CPU {
     // read and pop a value off of the stack, called pulling on nesdev
     pub fn stack_pop(&mut self) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1); 
-        self.mem_read(self.stack_pointer as u16) // stack_pointer is a mem address directly
+        self.mem_read((STACK as u16) + self.stack_pointer as u16) // stack_pointer is a mem address directly
     }
 
     pub fn stack_push(&mut self, data: u8) {
-        self.mem_write(self.stack_pointer.into(), data);
+        self.mem_write((STACK as u16) + self.stack_pointer as u16, data);
         self.stack_pointer = self.stack_pointer.wrapping_sub(1); 
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
         let hi = (data >> 8) as u8;
         let lo = (data & 0xFF) as u8;
-        self.stack_push(lo);
         self.stack_push(hi);
+        self.stack_push(lo);
     }
 
     pub fn stack_pop_u16(&mut self) -> u16 {
@@ -274,8 +274,10 @@ impl CPU {
         // Carry bit is the 0th bit so this won't work, probably a better way
         // to determine if the 7th bit is set or not
         if value_to_modify & NEGATIVE_BIT == NEGATIVE_BIT {
+            // can instead call self.set_carry_flag()
             self.status = self.status | CARRY_BIT
         } else {
+            // can instead call self.clear_carry_flag()
             self.status = self.status & !CARRY_BIT;
         }
 
@@ -583,7 +585,7 @@ impl CPU {
 
     // LSR - Logical Shift Right: each of the bits in the accumulator or at the memory
     // location is shifted one place to the right, former bit 0 is stored in the carry flag,
-    // bit 7 is set to 0
+    // bit 7 is set to 0, in the guide he returns value_to_modify if not using Accumulator mode
     pub fn lsr(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
@@ -597,8 +599,10 @@ impl CPU {
 
         // shift right one bit after saving bit 0 as the carry bit
         if value_to_modify & CARRY_BIT == CARRY_BIT {
+            // can use self.set_carry_flag()
             self.status = self.status | CARRY_BIT
         } else {
+            // can use self.clear_carry_flag()
             self.status = self.status & !CARRY_BIT;
         }
 
@@ -894,7 +898,8 @@ impl CPU {
         }
 
         // Set the Negative flag
-        if result & 0b1000_0000 != 0 {
+        // if result & 0b1000_0000 != 0 {
+        if result >> 7 == 1 {
             self.status = self.status | NEGATIVE_BIT;
         } else {
             self.status = self.status & !NEGATIVE_BIT;
@@ -920,8 +925,8 @@ impl CPU {
     pub fn reset(&mut self) {
         self.register_a = 0;
         self.register_x = 0;
-        self.status = 0;
-
+        self.status = 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT;
+        self.stack_pointer = STACK_RESET_CODE;
 
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
@@ -929,7 +934,8 @@ impl CPU {
     pub fn load(&mut self, program: Vec<u8>) {
         // Then NES typically uses 0x8000-0xFFFF for loading in the cartridge ROM
         self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x0600)
+        self.mem_write_u16(0xFFFC, 0x0600) // The NES reads the address that is stored here
+        // and sets the program counter to this address stored at 0xFFFC to begin running.
     }
 
     // for mem_read_u16 and mem_write_u16 double check that this isn't breaking anything
