@@ -174,8 +174,9 @@ impl CPU {
 
     // read and pop a value off of the stack, called pulling on nesdev
     pub fn stack_pop(&mut self) -> u8 {
+        let value = self.mem_read((STACK as u16) + self.stack_pointer as u16); // stack_pointer is a mem address directly
         self.stack_pointer = self.stack_pointer.wrapping_add(1); 
-        self.mem_read((STACK as u16) + self.stack_pointer as u16) // stack_pointer is a mem address directly
+        value
     }
 
     pub fn stack_push(&mut self, data: u8) {
@@ -640,24 +641,24 @@ impl CPU {
 
     // PHA - Push Accumulator; Pushes a copy of the accumulator onto the stack
     pub fn pha(&mut self) {
-        todo!("Implement this after writing a helper to write to the stack");
+        self.stack_push(self.register_a);
     }
 
     // PHP - Push Processor Status; Pushes a copy of the cpu status onto the stack
     pub fn php(&mut self) {
-        todo!("Implement this after writing a helper to write to the stack");
+        self.stack_push(self.status);
     }
 
     // PLA - Pull Accumulator: Pull an 8 bit value from the stack and into the 
     // accumulator, setting zero and negative flags based on the value in the accumulator
     pub fn pla(&mut self) {
-        todo!("Implement this after writing a helper to pop/pull from the stack");
+        self.register_a = self.stack_pop();
     }
 
     // PLP - Pull Processor Status: Pull an 8 bit value from the stack and into the 
     // CPU status, setting zero and negative flags based on the value in the cpu status
     pub fn plp(&mut self) {
-        todo!("Implement this after writing a helper to pop/pull from the stack");
+        self.status = self.stack_pop();
     }
 
     // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place 
