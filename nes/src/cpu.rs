@@ -387,13 +387,13 @@ impl CPU {
     // BVC - Branch if Overflow clear: if the overflow flag is clear then add the relative
     // displacement to the program counter to cause a branch to a new location
     pub fn bvc(&mut self) {
-        todo!("Implement BVC");
+        self.branch(self.status & OVERFLOW_BIT != OVERFLOW_BIT);
     }
 
     // BVS - Branch if Overflow set: if the overflow flag is set then add the relative
     // displacement to the program counter to cause a branch to a new location
     pub fn bvs(&mut self) {
-        todo!("Implement BVS");
+        self.branch(self.status & OVERFLOW_BIT == OVERFLOW_BIT);
     }
 
     // CLC - Clear Carry Flag: Set the carry flag to 0
@@ -765,8 +765,8 @@ impl CPU {
     // RTI - Return from Interrupt: Used at the end of an interrupt processing routine,
     // pulls the processor flags from the stack followed by the program counter
     pub fn rti(&mut self) {
-        todo!("Implement RTI, asking to read values from stack so still need the stack
-                read and write helpers");
+        self.status = self.stack_pop();
+        self.program_counter = self.stack_pop() as u16;
     }
 
     // RTS - Return from subroutine: Used at the end of a subroutine,
