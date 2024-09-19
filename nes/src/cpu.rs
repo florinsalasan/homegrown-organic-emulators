@@ -540,10 +540,24 @@ impl CPU {
     // JMP - Jump, setting the program counter to the address specified
     // in memory, no flags are affected
     pub fn jmp(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        let value = self.mem_read(addr);
+        if matches!(mode, AddressingMode::Absolute) {
+            // Absolute JMP
+            let addr = self.mem_read_u16(self.program_counter);
+            self.program_counter = addr;
+        } else {
+            // Indirect JMP
+            let mem_addr = self.mem_read_u16(self.program_counter);
 
-        self.program_counter = value as u16;
+            let indirect_ref = if mem_addr & 0x00FF == 0x00FF {
+                let lo = self.mem_read(mem_addr);
+                let hi = self.mem_read(mem_addr & 0xFF00);
+                (hi as u16) << 8 | (lo as u16)
+            } else {
+                self.mem_read_u16(mem_addr)
+            };
+
+            self.program_counter = indirect_ref;
+        }
     }
 
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
@@ -551,7 +565,7 @@ impl CPU {
     pub fn jsr(&mut self) {
         self.stack_push_u16(self.program_counter + 2 - 1);
         let target_address = self.mem_read_u16(self.program_counter);
-        self.program_counter = target_address; // Why does this not need a semi colon again?
+        self.program_counter = target_address 
     }
 
     // LDA that takes in different AddressingModes
@@ -655,6 +669,7 @@ impl CPU {
     // accumulator, setting zero and negative flags based on the value in the accumulator
     pub fn pla(&mut self) {
         self.register_a = self.stack_pop();
+        self.set_zero_and_neg_flags(self.register_a);
     }
 
     // PLP - Pull Processor Status: Pull an 8 bit value from the stack and into the 
@@ -663,7 +678,7 @@ impl CPU {
     // and clears BREAK_BIT
     pub fn plp(&mut self) {
         self.status = self.stack_pop();
-        self.status = self.status | NOT_A_FLAG_BIT & !BREAK_BIT;
+        self.status = (self.status | NOT_A_FLAG_BIT) & !BREAK_BIT;
     }
 
     // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place 
@@ -853,7 +868,7 @@ impl CPU {
     }
 
     // TSX - transfer stack pointer to X
-    // copies current contents of the stack register into the X register, setting 
+   // copies current contents of the stack register into the X register, setting 
     // zero and negative flags
     pub fn tsx(&mut self) {
         self.register_x = self.stack_pointer;
