@@ -56,24 +56,24 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
         OpCode::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
         OpCode::new(0x1E, "ASL", 3, 7, AddressingMode::Absolute_X),
 
-        OpCode::new(0x90, "BCC", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0x90, "BCC", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0xB0, "BCS", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0xB0, "BCS", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0xF0, "BEQ", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0xF0, "BEQ", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
         OpCode::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
 
-        OpCode::new(0x30, "BMI", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0x30, "BMI", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0xD0, "BNE", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0xD0, "BNE", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0x10, "BPL", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0x10, "BPL", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0x50, "BVC", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0x50, "BVC", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
-        OpCode::new(0x70, "BVS", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::Relative),
+        OpCode::new(0x70, "BVS", 2, 2 /*+1 if branch succeeds, +2 if to a new page*/, AddressingMode::NoneAddressing),
 
         OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAddressing), // AddressingMode is
         // implied on nesdev
@@ -132,11 +132,11 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
         OpCode::new(0xE8, "INX", 1, 2, AddressingMode::NoneAddressing), // implied
         OpCode::new(0xC8, "INY", 1, 2, AddressingMode::NoneAddressing), // implied
 
-        OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute), 
+        OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Immediate), 
         OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::NoneAddressing), // indirect, this is the
         // only opcode to use this addressing mode
 
-        OpCode::new(0x20, "JSR", 3, 6, AddressingMode::Absolute), 
+        OpCode::new(0x20, "JSR", 3, 6, AddressingMode::NoneAddressing), 
 
         OpCode::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
         OpCode::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
