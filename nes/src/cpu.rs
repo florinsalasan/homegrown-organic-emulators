@@ -50,8 +50,6 @@ pub enum AddressingMode {
     Absolute_Y,
     Indirect_X,
     Indirect_Y,
-    Relative,
-    Accumulator,
     NoneAddressing,
 }
 
@@ -151,23 +149,11 @@ impl CPU {
                 deref
             }
 
-            AddressingMode::Relative => {
-                todo!("Implement relative jumps: This mode is used by instructions that contain a signed 8bit
-                offset to add to the program counter if a condition is true. Maybe not needed");
-            }
-
-            AddressingMode::Accumulator => {
-                // This just modifies the accumulator directly, shouldn't really return anything
-                // here right?, Just throw in a check to see if the addressing mode is Accumulator 
-                // in any functions that can modify it directly 
-                return 0x00;
-            }
-
             AddressingMode::NoneAddressing => {
                 // replace the panic with something else maybe? No reason for 
                 // program to panic if an addressing mode isn't needed, for example 
                 // TAX transferring the accumulator value to register_x
-                return 0x00;
+                panic!("This addressing mode doesn't exist {:?}\n", mode);
             }
         }
     }
@@ -262,7 +248,7 @@ impl CPU {
     pub fn asl(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
@@ -286,7 +272,7 @@ impl CPU {
 
         self.set_zero_and_neg_flags(value_to_modify);
 
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             self.register_a = value_to_modify;
         } else {
@@ -540,7 +526,7 @@ impl CPU {
     // JMP - Jump, setting the program counter to the address specified
     // in memory, no flags are affected
     pub fn jmp(&mut self, mode: &AddressingMode) {
-        if matches!(mode, AddressingMode::Absolute) {
+        if matches!(mode, AddressingMode::Immediate) {
             // Absolute JMP
             let addr = self.mem_read_u16(self.program_counter);
             self.program_counter = addr;
@@ -565,7 +551,7 @@ impl CPU {
     pub fn jsr(&mut self) {
         self.stack_push_u16(self.program_counter + 2 - 1);
         let target_address = self.mem_read_u16(self.program_counter);
-        self.program_counter = target_address 
+        self.program_counter = target_address; 
     }
 
     // LDA that takes in different AddressingModes
@@ -603,7 +589,7 @@ impl CPU {
     pub fn lsr(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
@@ -627,7 +613,7 @@ impl CPU {
 
         self.set_zero_and_neg_flags(value_to_modify);
 
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             self.register_a = value_to_modify;
         } else {
@@ -689,7 +675,7 @@ impl CPU {
     pub fn rol(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
@@ -716,7 +702,7 @@ impl CPU {
 
         self.set_zero_and_neg_flags(value_to_modify);
 
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             self.register_a = value_to_modify;
         } else {
@@ -731,7 +717,7 @@ impl CPU {
     pub fn ror(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
         let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
@@ -755,7 +741,7 @@ impl CPU {
 
         self.set_zero_and_neg_flags(value_to_modify);
 
-        if matches!(mode, AddressingMode::Accumulator) {
+        if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             self.register_a = value_to_modify;
         } else {
