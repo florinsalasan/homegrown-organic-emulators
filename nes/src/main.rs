@@ -1,13 +1,15 @@
 pub mod cpu;
-use crate::cpu::CPU;
 pub mod opcodes;
+
+use cpu::Memory;
+use cpu::CPU;
+
 
 use rand::prelude::*;
 
 extern crate sdl2;
 
 use sdl2::event::Event;
-use sdl2::render::Canvas;
 use sdl2::EventPump;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -21,9 +23,10 @@ fn main() {
         .window("Snake game", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
         .position_centered()
         .build().unwrap();
+
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    canvas.set_scale(10.0, 10.0).unwrap();
+    canvas.set_scale(20.0, 20.0).unwrap();
 
     // Canvas is initialized, nothing really controls it from above so if unwrapping 
     // goes wrong, not much that can be done about it. Next we create the texture to 
@@ -72,9 +75,9 @@ fn main() {
             texture.update(None, &screen_state, 32 * 3).unwrap();
             canvas.copy(&texture, None, None).unwrap();
             canvas.present();
-    }
+        }
 
-    ::std::thread::sleep(std::time::Duration::new(0, 70_000));
+        ::std::thread::sleep(std::time::Duration::new(0, 70_000));
     });
     
 }
@@ -120,7 +123,7 @@ fn color(byte: u8) -> Color {
 }
 
 // helper to read the screen state
-fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
+fn read_screen_state(cpu: &CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
     for i in 0x0200..0x0600 {
