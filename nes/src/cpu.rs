@@ -756,6 +756,9 @@ impl CPU {
     // sets break and not a flag manually, nesdev says just keep the values pulled from stack
     pub fn rti(&mut self) {
         self.status = self.stack_pop();
+        self.status = self.status & !BREAK_BIT;
+        self.status = self.status | NOT_A_FLAG_BIT;
+
         self.program_counter = self.stack_pop_u16();
     }
 
@@ -975,7 +978,7 @@ impl CPU {
 
             match opcode {
                 // BRK 
-                0x00 => self.brk(),
+                0x00 => return, // self.brk(),
 
                 // ADC opcodes
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => {
