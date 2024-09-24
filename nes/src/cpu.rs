@@ -259,7 +259,8 @@ impl CPU {
         // shift left one bit after saving bit 7 as the carry bit
         // Carry bit is the 0th bit so this won't work, probably a better way
         // to determine if the 7th bit is set or not
-        if value_to_modify & NEGATIVE_BIT == NEGATIVE_BIT {
+        // if value_to_modify & NEGATIVE_BIT == NEGATIVE_BIT {
+        if value_to_modify >> 7 == 1 {
             // can instead call self.set_carry_flag()
             self.status = self.status | CARRY_BIT
         } else {
@@ -270,8 +271,6 @@ impl CPU {
         // flag is set, shift it over by one, then set the zero and negative flags
         value_to_modify = value_to_modify << 1;
 
-        self.set_zero_and_neg_flags(value_to_modify);
-
         if matches!(mode, AddressingMode::NoneAddressing) {
             // modify accumulator directly
             self.register_a = value_to_modify;
@@ -280,6 +279,8 @@ impl CPU {
             // never run if addressingMode is Accumulator
             self.mem_write(addr, value_to_modify);
         }
+
+        self.set_zero_and_neg_flags(value_to_modify);
     }
 
     // BCC - Branch if carry clear: if the carry flag is clear, add the relative
@@ -549,7 +550,7 @@ impl CPU {
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
     // then sets the program counter to the target memory address
     pub fn jsr(&mut self) {
-        self.stack_push_u16(self.program_counter + 2 - 1);
+        self.stack_push_u16((self.program_counter + 2) - 1);
         let target_address = self.mem_read_u16(self.program_counter);
         self.program_counter = target_address; 
     }
@@ -1095,7 +1096,12 @@ impl CPU {
                 }
                 
                 // JSR
-                0x20 => self.jsr(),
+                0x20 => {
+                    self.stack_push_u16((self.program_counter + 2) - 1);
+                    let target_address = self.mem_read_u16(self.program_counter);
+                    self.program_counter = target_address
+                },
+                //self.jsr(),
 
                 // LDA opcodes
                 0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
