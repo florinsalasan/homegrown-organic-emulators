@@ -924,6 +924,9 @@ impl CPU {
         self.register_y = 0;
         self.status = 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT;
         self.stack_pointer = STACK_RESET_CODE;
+        // Not going to reset memory yet because I'd need to rewrite tests to call memory writing
+        // in machine code
+        // self.memory = [0; 0xFFFF];
 
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
@@ -1417,5 +1420,12 @@ mod tests {
         cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
 
         assert_eq!(cpu.register_a, 0x55);
+    }
+
+    #[test]
+    fn test_adc_immediate_no_overflow_no_negative() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x69, 0x09, 0x00]);
+        assert_eq!(cpu.register_a, 0x09);
     }
 }
