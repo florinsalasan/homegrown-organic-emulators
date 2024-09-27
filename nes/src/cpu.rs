@@ -1428,4 +1428,12 @@ mod tests {
         cpu.load_and_run(vec![0x69, 0x09, 0x00]);
         assert_eq!(cpu.register_a, 0x09);
     }
+
+    #[test]
+    fn test_adc_immediate_overflow_and_negative() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x69, 0xFF, 0x69, 0x01, 0x00]);
+        assert_eq!(cpu.register_a, 0x00);
+        assert_eq!(cpu.status, 0 | CARRY_BIT| INTERRUPT_DISABLE_BIT | ZERO_BIT);
+    }
 }
