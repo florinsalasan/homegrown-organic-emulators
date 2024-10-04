@@ -694,35 +694,29 @@ int main(int argc, char** argv) {
     init_sdl_display();
     printf("[OK] Display initialized\n");
 
-    uint32_t start_tick;
     const uint32_t frame_time = 16;
+    const uint32_t timer_freq = 60;
     uint32_t last_draw_time = 0;
+    uint32_t last_timer_update = 0;
+    uint32_t current_time = SDL_GetTicks();
 
     while (!should_quit) {
-        start_tick = SDL_GetTicks();
-        bool draw_occurred = false;
+        if (current_time - last_timer_update >= 1000 / timer_freq) {
+            bool draw_occurred = false;
 
-        for (int i = 0; i < 500; i++) {
-            draw_occurred = emulate_cycle();
-            if (draw_occurred) break;
-        }
-
-        if (draw_occurred) {
-            uint32_t time_since_last_draw = start_tick - last_draw_time;
-            if (time_since_last_draw < frame_time) {
-                SDL_Delay(frame_time - time_since_last_draw);
+            for (int i = 0; i < 16; i++) {
+                draw_occurred = emulate_cycle();
+                if (draw_occurred) break;
             }
 
             if (draw_flag) {
                 draw_on_screen(display);
                 draw_flag = 0;
+                
+                last_draw_time = current_time;
             }
-            
-            last_draw_time = SDL_GetTicks();
-        }
 
-        // Decrement the timers if needed:
-        if (start_tick - last_draw_time >= 16) {
+            // Decrement the timers if needed:
             if (delay_timer > 0) {
                 delay_timer -= 1;
                 printf("delay_timer: %i\n", delay_timer);
@@ -731,9 +725,14 @@ int main(int argc, char** argv) {
                 sound_timer -= 1;
                 printf("sound_timer: %i\n", sound_timer);
             }
-        }
 
-        sdl_handler(keypad);
+            uint32_t time_since_last_draw = current_time - last_draw_time;
+            if (time_since_last_draw < frame_time) {
+                SDL_Delay(frame_time - time_since_last_draw);
+            }
+
+            sdl_handler(keypad);
+        }
 
     }
 
