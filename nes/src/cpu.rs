@@ -549,11 +549,12 @@ impl CPU {
 
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
     // then sets the program counter to the target memory address
-    pub fn jsr(&mut self) {
-        self.stack_push_u16((self.program_counter + 2) - 1);
-        let target_address = self.mem_read_u16(self.program_counter);
-        self.program_counter = target_address; 
-    }
+    // I'm calling this straight from the match statement in the run_with_callback function
+    // pub fn jsr(&mut self) {
+        // self.stack_push_u16((self.program_counter + 2) - 1);
+        // let target_address = self.mem_read_u16(self.program_counter);
+        // self.program_counter = target_address; 
+    // }
 
     // LDA that takes in different AddressingModes
     // loads a byte of memory into the accumulator (register_a) and sets zero and neg flags
@@ -903,14 +904,14 @@ impl CPU {
 
     }
     // read memory at a given address
-    pub fn mem_read(&mut self, address: u16) -> u8 {
-        self.memory[address as usize]
-    }
+    // pub fn mem_read(&mut self, address: u16) -> u8 {
+        // self.memory[address as usize]
+    // }
 
     // write data to memory at a given address
-    pub fn mem_write(&mut self, address: u16, data: u8) {
-        self.memory[address as usize] = data
-    }
+    // pub fn mem_write(&mut self, address: u16, data: u8) {
+        // self.memory[address as usize] = data
+    // }
 
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
@@ -952,7 +953,7 @@ impl CPU {
         let hi = (data >> 8) as u8;
         let lo = (data & 0xFF) as u8;
         self.mem_write(pos, lo);
-        self.mem_write(pos.wrapping_add(1), hi);
+        self.mem_write(pos + 1, hi);
     }
 
     // The main CPU loop is:
@@ -1095,14 +1096,14 @@ impl CPU {
                 // JMP 
                 0x4C | 0x6C => {
                     self.jmp(&other_map[&opcode].addressing_mode);
-                    self.program_counter += (other_map[&opcode].bytes as u16) - 1;
+                    // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
                 
                 // JSR
                 0x20 => {
-                    self.stack_push_u16((self.program_counter + 2) - 1);
+                    self.stack_push_u16(self.program_counter + 2 - 1);
                     let target_address = self.mem_read_u16(self.program_counter);
-                    self.program_counter = target_address
+                    self.program_counter = target_address;
                 },
                 //self.jsr(),
 
