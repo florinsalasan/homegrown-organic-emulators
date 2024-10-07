@@ -310,6 +310,14 @@ impl CPU {
     pub fn bit(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode); // should only be zero page and absolute
         let value_in_memory = self.mem_read(addr);
+        
+        // set the zero flag
+        let anded_value = value_in_memory & self.register_a;
+        if anded_value == 0 {
+            self.status = self.status | ZERO_BIT;
+        } else {
+            self.status = self.status & !ZERO_BIT;
+        }
 
         // copy bit values into overflow and negative flags
         let new_overflow = value_in_memory & OVERFLOW_BIT;
@@ -319,8 +327,8 @@ impl CPU {
             self.status = self.status & !OVERFLOW_BIT;
         }
 
-        let new_overflow = value_in_memory & NEGATIVE_BIT;
-        if new_overflow > 0 {
+        let new_negative = value_in_memory & NEGATIVE_BIT;
+        if new_negative > 0 {
             self.status = self.status | NEGATIVE_BIT;
         } else {
             self.status = self.status & !NEGATIVE_BIT;
@@ -329,13 +337,6 @@ impl CPU {
         // method for each flag toggle in the emulator. But at least it should be obvious
         // what it's doing each time. So it should be hard to not understand this in the future
 
-        // set the zero flag
-        let anded_value = value_in_memory & self.register_a;
-        if anded_value == 0 {
-            self.status = self.status | ZERO_BIT;
-        } else {
-            self.status = self.status & !ZERO_BIT;
-        }
     }
 
     // BMI - Branch if Minus: if the negative flag is set then add the relative
@@ -778,7 +779,8 @@ impl CPU {
         // Use the code from adc, and just change the value read from memory
         let addr = self.get_operand_address(mode);
         // TODO: determine if this is working and not breaking in an unexpected way.
-        let value_to_add = !self.mem_read(addr) + 1;
+        let mut value_to_add = self.mem_read(addr);
+        value_to_add = (value_to_add as i8).wrapping_neg().wrapping_sub(1) as u8;
 
         // save the sum, to be able to properly set the necessary flags
         let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 } as u16);
