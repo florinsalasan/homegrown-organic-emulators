@@ -21,7 +21,7 @@ that I wanted to run for myself, SDL2 needs to be installed on your machine to u
 - nesdev.org has been a massive [help](https://www.nesdev.org) plenty of info throughout the site
 
 ## TODO/BROKEN:
-- [ ] Get the emulator running the test rom
+- [x] Get the emulator running the test rom
 - [ ] Remove the test rom from hard coded in
 - [ ] Allow users to run whatever NES rom they want by loading it into the emulator
 - [ ] Just getting the thing running and then adding a bunch of tests

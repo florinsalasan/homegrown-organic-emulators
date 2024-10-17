@@ -1,9 +1,10 @@
 pub mod cpu;
 pub mod opcodes;
+pub mod bus;
 
 use cpu::Memory;
 use cpu::CPU;
-
+use bus::Bus;
 
 use rand::prelude::*;
 
@@ -59,9 +60,11 @@ fn main() {
         0xea, 0xca, 0xd0, 0xfb, 0x60
     ];
 
-    let mut cpu = CPU::new();
+    let bus = Bus::new();
+    let mut cpu = CPU::new(bus);
     cpu.load(game_code);
     cpu.reset();
+    cpu.program_counter = 0x0600;
 
     let mut screen_state = [0 as u8; 32 * 3 * 32];
     let mut rng = rand::thread_rng();
@@ -126,7 +129,7 @@ fn color(byte: u8) -> Color {
 fn read_screen_state(cpu: &CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
-    for i in 0x0200..0x0600 {
+    for i in 0x0200..0x600 {
         let color_idx = cpu.mem_read(i as u16);
         let (b1, b2, b3) = color(color_idx).rgb();
         if frame[frame_idx] != b1 || frame[frame_idx + 1] != b2 || frame[frame_idx + 2] != b3 {
