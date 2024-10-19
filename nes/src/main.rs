@@ -1,10 +1,12 @@
 pub mod cpu;
 pub mod opcodes;
 pub mod bus;
+pub mod cartridge;
 
 use cpu::Memory;
 use cpu::CPU;
 use bus::Bus;
+use cartridge::Rom;
 
 use rand::prelude::*;
 
@@ -21,7 +23,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Snake game", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
+        .window("NES", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
         .position_centered()
         .build().unwrap();
 
@@ -60,11 +62,15 @@ fn main() {
         0xea, 0xca, 0xd0, 0xfb, 0x60
     ];
 
-    let bus = Bus::new();
+    // load the game rom
+    let bytes: Vec<u8> = std::fs::read("ROMs/snake.nes").unwrap();
+    let rom = Rom::new(&bytes).unwrap();
+
+    let bus = Bus::new(rom);
     let mut cpu = CPU::new(bus);
     cpu.load(game_code);
     cpu.reset();
-    cpu.program_counter = 0x0600;
+    // cpu.program_counter = 0x0600;
 
     let mut screen_state = [0 as u8; 32 * 3 * 32];
     let mut rng = rand::thread_rng();
