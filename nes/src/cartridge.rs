@@ -28,7 +28,7 @@ impl Rom {
 
         let mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
 
-        let ines_ver = (raw[7] >> 2) &0b11;
+        let ines_ver = (raw[7] >> 2) & 0b11;
         if ines_ver != 0 {
             return Err("NES2.0 format is not supported".to_string());
         }
@@ -46,7 +46,7 @@ impl Rom {
 
         let skip_trainer = raw[6] & 0b100 != 0;
 
-        let prg_rom_start = 16 + if skip_trainer {512} else {0};
+        let prg_rom_start = 16 + if skip_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
         Ok(Rom {

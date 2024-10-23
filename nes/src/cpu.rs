@@ -1,7 +1,7 @@
 use std::usize;
 
-use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 use crate::bus::Bus;
+use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
 // # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
 //
@@ -30,7 +30,7 @@ pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
-    pub status: u8, 
+    pub status: u8,
     pub program_counter: u16,
     pub stack_pointer: u8, // This points to the top of the stack, decrementing
     // when a byte of data is pushed to the stack and incrementing when popped
@@ -40,8 +40,7 @@ pub struct CPU {
 const STACK: u16 = 0x0100; // Starting address for the stack in the NES in memory
 const STACK_RESET_CODE: u8 = 0xFD;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub enum AddressingMode {
     Immediate,
@@ -102,46 +101,43 @@ impl CPU {
             register_y: 0,
             status: 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT, // 8 bit register, representing 7 flags
             program_counter: 0,
-            stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in 
+            stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in
             bus: bus_,
         }
     }
 
-    fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
-
+    pub fn get_absolute_address(&self, mode: &AddressingMode, addr: u16) -> u16 {
         match mode {
-            AddressingMode::Immediate => self.program_counter,
+            AddressingMode::ZeroPage => self.mem_read(addr) as u16,
 
-            AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
+            AddressingMode::Absolute => self.mem_read_u16(addr),
 
-            AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
-            
             AddressingMode::ZeroPage_X => {
-                let pos = self.mem_read(self.program_counter);
+                let pos = self.mem_read(addr);
                 let addr = pos.wrapping_add(self.register_x) as u16;
                 addr
             }
 
             AddressingMode::ZeroPage_Y => {
-                let pos = self.mem_read(self.program_counter);
+                let pos = self.mem_read(addr);
                 let addr = pos.wrapping_add(self.register_y) as u16;
                 addr
             }
 
             AddressingMode::Absolute_X => {
-                let base = self.mem_read_u16(self.program_counter);
+                let base = self.mem_read_u16(addr);
                 let addr = base.wrapping_add(self.register_x as u16);
                 addr
             }
 
             AddressingMode::Absolute_Y => {
-                let base = self.mem_read_u16(self.program_counter);
+                let base = self.mem_read_u16(addr);
                 let addr = base.wrapping_add(self.register_y as u16);
                 addr
             }
-            
+
             AddressingMode::Indirect_X => {
-                let base = self.mem_read(self.program_counter);
+                let base = self.mem_read(addr);
 
                 let ptr: u8 = (base as u8).wrapping_add(self.register_x);
                 let lo = self.mem_read(ptr as u16);
@@ -150,7 +146,7 @@ impl CPU {
             }
 
             AddressingMode::Indirect_Y => {
-                let base = self.mem_read(self.program_counter);
+                let base = self.mem_read(addr);
 
                 let lo = self.mem_read(base as u16);
                 let hi = self.mem_read((base as u16).wrapping_add(1) as u16);
@@ -159,24 +155,31 @@ impl CPU {
                 deref
             }
 
-            AddressingMode::NoneAddressing => {
-                // replace the panic with something else maybe? No reason for 
-                // program to panic if an addressing mode isn't needed, for example 
+            _ => {
+                // replace the panic with something else maybe? No reason for
+                // program to panic if an addressing mode isn't needed, for example
                 // TAX transferring the accumulator value to register_x
-                panic!("This addressing mode doesn't exist {:?}\n", mode);
+                panic!("This addressing mode isn't supported {:?}\n", mode);
             }
+        }
+    }
+
+    fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
+        match mode {
+            AddressingMode::Immediate => self.program_counter,
+            _ => self.get_absolute_address(mode, self.program_counter),
         }
     }
 
     // read and pop a value off of the stack, called pulling on nesdev
     pub fn stack_pop(&mut self) -> u8 {
-        self.stack_pointer = self.stack_pointer.wrapping_add(1); 
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
         self.mem_read((STACK as u16) + self.stack_pointer as u16) // stack_pointer is a mem address directly
     }
 
     pub fn stack_push(&mut self, data: u8) {
         self.mem_write((STACK as u16) + self.stack_pointer as u16, data);
-        self.stack_pointer = self.stack_pointer.wrapping_sub(1); 
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
@@ -205,7 +208,7 @@ impl CPU {
         }
     }
 
-    // ADC, add with carry, reading the value of a given address, add the value 
+    // ADC, add with carry, reading the value of a given address, add the value
     // to the accumulator with the carry bit, if overflow occurs, carry bit is
     // set enabling multiple byte addition
     pub fn adc(&mut self, mode: &AddressingMode) {
@@ -213,26 +216,32 @@ impl CPU {
         let value_to_add = self.mem_read(addr);
 
         // save the sum, to be able to properly set the necessary flags
-        let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 }) as u16;
+        let sum = (self.register_a as u16)
+            + (value_to_add as u16)
+            + (if self.status & CARRY_BIT == CARRY_BIT {
+                1
+            } else {
+                0
+            }) as u16;
 
         let carry = sum > 0xFF;
 
         if carry {
-            self.status = self.status | CARRY_BIT; 
+            self.status = self.status | CARRY_BIT;
         } else {
             self.status = self.status & !CARRY_BIT;
         }
 
-        let result  = sum as u8;
+        let result = sum as u8;
 
         // I don't understand what this is looking for, but there is an article
         // describing that overflow occurs when this LHS is nonzero, and I choose to
         // believe that he is correct as he explains the bit operations in depth.
         if (value_to_add ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-            self.status = self.status | OVERFLOW_BIT; 
+            self.status = self.status | OVERFLOW_BIT;
         } else {
             // keep all of the other status flags while turning off the overflow_bit
-            self.status = self.status & !OVERFLOW_BIT; 
+            self.status = self.status & !OVERFLOW_BIT;
         }
 
         // store the result to register_a
@@ -243,17 +252,17 @@ impl CPU {
         // all 4 flags that can be set by this instruction are set
     }
 
-    // AND - Logical AND is performed bit by bit on the accumulator (register_a) and the 
+    // AND - Logical AND is performed bit by bit on the accumulator (register_a) and the
     // byte of memory that is accessed.
     pub fn and(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        self.register_a = self.register_a & value; 
+        self.register_a = self.register_a & value;
         self.set_zero_and_neg_flags(self.register_a);
     }
 
     // ASL - Arithmetic Shift Left, the operation shifts all bits of the accumulator (register_a)
-    // or the memory contents one bit to the left, bit 7 is placed into the carry 
+    // or the memory contents one bit to the left, bit 7 is placed into the carry
     // flag and bit 0 is set to 0. Zero and Negative flags also need to be updated
     pub fn asl(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
@@ -314,13 +323,13 @@ impl CPU {
     }
 
     // BIT - bit test: used to test if one or more bits are set in a target memory location.
-    // The mask pattern in the Accumulator (register_a) is ANDed with the value in memory to 
+    // The mask pattern in the Accumulator (register_a) is ANDed with the value in memory to
     // set or clear the zero flag, without keeping the result. Bits 7 and 6 of the value in
     // memory are copied into the Negative and Overflow flags respectively
     pub fn bit(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode); // should only be zero page and absolute
         let value_in_memory = self.mem_read(addr);
-        
+
         // set the zero flag
         let anded_value = value_in_memory & self.register_a;
         if anded_value == 0 {
@@ -346,7 +355,6 @@ impl CPU {
         // There's gotta be a better way to set these flags than repeating this verbose
         // method for each flag toggle in the emulator. But at least it should be obvious
         // what it's doing each time. So it should be hard to not understand this in the future
-
     }
 
     // BMI - Branch if Minus: if the negative flag is set then add the relative
@@ -357,18 +365,18 @@ impl CPU {
         self.branch(self.status & NEGATIVE_BIT == NEGATIVE_BIT);
     }
 
-    // BNE - Branch if not equal: if zero flag is clear, add relative displacement to the 
+    // BNE - Branch if not equal: if zero flag is clear, add relative displacement to the
     // program counter to cause a branch to a new location.
     pub fn bne(&mut self) {
         self.branch(self.status & ZERO_BIT != ZERO_BIT);
     }
 
-    // BPL - Branch if Positive: if the negative flag is clear then add the relative 
+    // BPL - Branch if Positive: if the negative flag is clear then add the relative
     // displacement to the program counter to cause a branch to a new location
     pub fn bpl(&mut self) {
         self.branch(self.status & NEGATIVE_BIT != NEGATIVE_BIT);
     }
-    
+
     // BRK - Force interrupt: Program counter and processor status are pushed on the stack
     // then the IRQ interrupt vector at $FFFE/F is loaded into the PC and the break flag in
     // the status is set to one.
@@ -378,7 +386,7 @@ impl CPU {
         self.stack_pointer = self.stack_pointer.wrapping_add(3);
         self.status = self.status | BREAK_BIT;
         self.program_counter = 0xFFFE;
-        return 
+        return;
     }
 
     // BVC - Branch if Overflow clear: if the overflow flag is clear then add the relative
@@ -404,7 +412,7 @@ impl CPU {
         self.status = self.status & !DECIMAL_MODE;
     }
 
-    // CLI - Clear interrupt disable flag, this allows normal interrupt requests to 
+    // CLI - Clear interrupt disable flag, this allows normal interrupt requests to
     // be serviced again.
     pub fn cli(&mut self) {
         self.status = self.status & !INTERRUPT_DISABLE_BIT;
@@ -427,11 +435,10 @@ impl CPU {
             self.status = self.status & !CARRY_BIT;
         }
 
-        // this might be extremely incorrect implementation of what the instruction is 
+        // this might be extremely incorrect implementation of what the instruction is
         // actually asking for. TODO: CHECK IF MUTATING
         let diff_in_values = self.register_a.wrapping_sub(value);
         self.set_zero_and_neg_flags(diff_in_values);
-
     }
 
     // CPX - Compare X register: the instruction compares the contents of the X register
@@ -446,8 +453,8 @@ impl CPU {
             self.status = self.status & !CARRY_BIT;
         }
 
-        // this might be extremely incorrect implementation of what the instruction is 
-        // actually asking for. I'm really hoping this isn't modifying the value of 
+        // this might be extremely incorrect implementation of what the instruction is
+        // actually asking for. I'm really hoping this isn't modifying the value of
         // register_x, I'm pretty sure that it isn't meant to. TODO: CHECK IF MUTATING
         let diff_in_values = self.register_x.wrapping_sub(value);
         self.set_zero_and_neg_flags(diff_in_values);
@@ -465,8 +472,8 @@ impl CPU {
             self.status = self.status & !CARRY_BIT;
         }
 
-        // this might be extremely incorrect implementation of what the instruction is 
-        // actually asking for. I'm really hoping this isn't modifying the value of 
+        // this might be extremely incorrect implementation of what the instruction is
+        // actually asking for. I'm really hoping this isn't modifying the value of
         // register_x, I'm pretty sure that it isn't meant to. TODO: CHECK IF MUTATING
         let diff_in_values = self.register_y.wrapping_sub(value);
         self.set_zero_and_neg_flags(diff_in_values);
@@ -494,12 +501,11 @@ impl CPU {
     // DEY - Decrement Y register: Subtract one from the value held in register_y
     // setting zero and negative flags as needed overflow is ignored for some reason.
     pub fn dey(&mut self) {
-
         self.register_y = self.register_y.wrapping_sub(1);
         self.set_zero_and_neg_flags(self.register_y);
     }
 
-    // EOR - Exclusive OR: Perform an exclusive or on the accumulator (register_a) and the 
+    // EOR - Exclusive OR: Perform an exclusive or on the accumulator (register_a) and the
     // value held in a specified memory location
     pub fn eor(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
@@ -509,7 +515,7 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_a);
     }
 
-    // INC - Increment the value held at a specified memory address, by one, 
+    // INC - Increment the value held at a specified memory address, by one,
     // set the zero and negative flags from the result, guide returns this value
     // for some reason
     pub fn inc(&mut self, mode: &AddressingMode) {
@@ -558,13 +564,13 @@ impl CPU {
         }
     }
 
-    // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack 
+    // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack
     // then sets the program counter to the target memory address
     // I'm calling this straight from the match statement in the run_with_callback function
     // pub fn jsr(&mut self) {
-        // self.stack_push_u16((self.program_counter + 2) - 1);
-        // let target_address = self.mem_read_u16(self.program_counter);
-        // self.program_counter = target_address; 
+    // self.stack_push_u16((self.program_counter + 2) - 1);
+    // let target_address = self.mem_read_u16(self.program_counter);
+    // self.program_counter = target_address;
     // }
 
     // LDA that takes in different AddressingModes
@@ -660,18 +666,18 @@ impl CPU {
     // says flags are not set at all with this instruction, guide sets both break and NOT_A_FLAG BITs
     pub fn php(&mut self) {
         let mut cur_flags = self.status.clone();
-        cur_flags = cur_flags | BREAK_BIT | NOT_A_FLAG_BIT;  
+        cur_flags = cur_flags | BREAK_BIT | NOT_A_FLAG_BIT;
         self.stack_push(cur_flags);
     }
 
-    // PLA - Pull Accumulator: Pull an 8 bit value from the stack and into the 
+    // PLA - Pull Accumulator: Pull an 8 bit value from the stack and into the
     // accumulator, setting zero and negative flags based on the value in the accumulator
     pub fn pla(&mut self) {
         self.register_a = self.stack_pop();
         self.set_zero_and_neg_flags(self.register_a);
     }
 
-    // PLP - Pull Processor Status: Pull an 8 bit value from the stack and into the 
+    // PLP - Pull Processor Status: Pull an 8 bit value from the stack and into the
     // CPU status, setting zero and negative flags based on the value in the cpu status
     // nesdev says to set all flags from the value pulled from the stack, guide sets NOT_A_FLAG_BIT
     // and clears BREAK_BIT
@@ -680,8 +686,8 @@ impl CPU {
         self.status = (self.status | NOT_A_FLAG_BIT) & !BREAK_BIT;
     }
 
-    // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place 
-    // to the left. Bit 0 is filled with the current value of the carry flag whilst the old bit 
+    // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place
+    // to the left. Bit 0 is filled with the current value of the carry flag whilst the old bit
     // 7 becomes the new carry flag value. TODO: Double check the order of operations here
     // this is broken, i misread the bits that are set as carry flag and which is filled with old
     // carry flag, redo the shifting.
@@ -711,7 +717,7 @@ impl CPU {
         if is_carry_set {
             value_to_modify = value_to_modify | 1;
         } // else rust should have already set it to zero when shifting, I think
-        // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
+          // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
 
         self.set_zero_and_neg_flags(value_to_modify);
 
@@ -725,7 +731,7 @@ impl CPU {
         }
     }
 
-    // ROR - rotate right, same as rol, only shift right, fill bit 7 with carry flag, and 
+    // ROR - rotate right, same as rol, only shift right, fill bit 7 with carry flag, and
     // old bit 0 is new carry flag. This is also broken possibly, redo shifts and flags
     pub fn ror(&mut self, mode: &AddressingMode) {
         let mut value_to_modify: u8;
@@ -750,7 +756,7 @@ impl CPU {
         if is_carry_set {
             value_to_modify = value_to_modify | CARRY_BIT;
         } // else rust should have already set it to zero when shifting, I think
-        // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
+          // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
 
         self.set_zero_and_neg_flags(value_to_modify);
 
@@ -765,7 +771,7 @@ impl CPU {
     }
 
     // RTI - Return from Interrupt: Used at the end of an interrupt processing routine,
-    // pulls the processor flags from the stack followed by the program counter, guide 
+    // pulls the processor flags from the stack followed by the program counter, guide
     // sets break and not a flag manually, nesdev says just keep the values pulled from stack
     pub fn rti(&mut self) {
         self.status = self.stack_pop();
@@ -781,8 +787,8 @@ impl CPU {
         self.program_counter = self.stack_pop_u16() + 1;
     }
 
-    // SBC - Subtract with Carry: Subtracts the contents of a memory location to the accumulator 
-    // with the not of the carry bit, if overflow occurs, the carry bit is clear, enabling multi 
+    // SBC - Subtract with Carry: Subtracts the contents of a memory location to the accumulator
+    // with the not of the carry bit, if overflow occurs, the carry bit is clear, enabling multi
     // byte subtraction to be performed. (A - M -(1-C));
     pub fn sbc(&mut self, mode: &AddressingMode) {
         // A - B = A + (-B) = A + (!B + 1);
@@ -793,26 +799,32 @@ impl CPU {
         value_to_add = (value_to_add as i8).wrapping_neg().wrapping_sub(1) as u8;
 
         // save the sum, to be able to properly set the necessary flags
-        let sum = (self.register_a as u16) + (value_to_add as u16) + (if self.status & CARRY_BIT == CARRY_BIT { 1 } else { 0 } as u16);
+        let sum = (self.register_a as u16)
+            + (value_to_add as u16)
+            + (if self.status & CARRY_BIT == CARRY_BIT {
+                1
+            } else {
+                0
+            } as u16);
 
         let carry = sum > 0xFF;
 
         if carry {
-            self.status = self.status | CARRY_BIT; 
+            self.status = self.status | CARRY_BIT;
         } else {
             self.status = self.status & !CARRY_BIT;
         }
 
-        let result  = sum as u8;
+        let result = sum as u8;
 
         // I don't understand what this is looking for, but there is an article
         // describing that overflow occurs when this LHS is nonzero, and I choose to
         // believe that he is correct as he explains the bit operations in depth.
         if (value_to_add ^ result) & (result ^ self.register_a) & 0x80 != 0 {
-            self.status = self.status | OVERFLOW_BIT; 
+            self.status = self.status | OVERFLOW_BIT;
         } else {
             // keep all of the other status flags while turning off the overflow_bit
-            self.status = self.status & !OVERFLOW_BIT; 
+            self.status = self.status & !OVERFLOW_BIT;
         }
 
         // store the result to register_a
@@ -871,7 +883,7 @@ impl CPU {
     }
 
     // TSX - transfer stack pointer to X
-   // copies current contents of the stack register into the X register, setting 
+    // copies current contents of the stack register into the X register, setting
     // zero and negative flags
     pub fn tsx(&mut self) {
         self.register_x = self.stack_pointer;
@@ -884,9 +896,9 @@ impl CPU {
         self.register_a = self.register_x;
         self.set_zero_and_neg_flags(self.register_a);
     }
-    
+
     // TXS - transfer x to stack pointer;
-    // Copies the current contents of the x register into the stack register 
+    // Copies the current contents of the x register into the stack register
     pub fn txs(&mut self) {
         self.stack_pointer = self.register_x;
     }
@@ -898,7 +910,6 @@ impl CPU {
     }
 
     pub fn set_zero_and_neg_flags(&mut self, result: u8) {
-
         // Set the Zero flag
         if result == 0 {
             self.status = self.status | ZERO_BIT;
@@ -913,12 +924,12 @@ impl CPU {
         } else {
             self.status = self.status & !NEGATIVE_BIT;
         }
-
     }
 
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
+        self.program_counter = 0x0600;
         // For testing purposes only, delete line setting program_counter when running
         // self.program_counter = self.mem_read_u16(0x0600);
         self.run();
@@ -943,9 +954,10 @@ impl CPU {
         // self.mem_write_u16(0xFFFC, 0x0600); // The NES reads the address that is stored here
         // and sets the program counter to this address stored at 0xFFFC to begin running.
         for i in 0..(program.len() as u16) {
-            self.mem_write(0x8600 + i, program[i as usize]);
+            self.mem_write(0x0600 + i, program[i as usize]);
         }
         // self.mem_write_u16(0xFFFC, 0x8600);
+        self.program_counter = 0x0600;
     }
 
     // The main CPU loop is:
@@ -959,22 +971,23 @@ impl CPU {
     }
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
-    where 
+    where
         F: FnMut(&mut CPU),
     {
         init_opcodes();
         // might as well remove the hashmap? But the method gets_or_inits the pub static
-        // hashmap so maybe it is needed, I have no idea what is happening behind the curtain 
+        // hashmap so maybe it is needed, I have no idea what is happening behind the curtain
         let other_map = init_opcodes_hashmap();
 
         loop {
-
+            callback(self);
             let opcode = self.mem_read(self.program_counter);
+            let mapped_opcode = other_map.get(&opcode).expect(&format!("{:x} is not recognized", opcode));
             self.program_counter += 1; // could wrapping add this maybe?
             let program_counter_state = self.program_counter;
 
-            match opcode {
-                // BRK 
+            match &mapped_opcode.opcode_num {
+                // BRK
                 0x00 => return, // self.brk(),
 
                 // ADC opcodes
@@ -982,28 +995,28 @@ impl CPU {
                     self.adc(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // AND opcodes
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
                     self.and(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // ASL opcodes
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => {
                     self.asl(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // BCC
                 0x90 => self.bcc(),
-                
+
                 // BCS
                 0xB0 => self.bcs(),
-                
+
                 // BEQ
                 0xF0 => self.beq(),
-                
+
                 // BIT opcodes
                 0x24 | 0x2C => {
                     self.bit(&other_map[&opcode].addressing_mode);
@@ -1018,7 +1031,7 @@ impl CPU {
 
                 // BPL
                 0x10 => self.bpl(),
-                
+
                 // BVC
                 0x50 => self.bvc(),
 
@@ -1060,13 +1073,13 @@ impl CPU {
                     self.dec(&other_map[&opcode].addressing_mode);
                     self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // DEX
                 0xCA => self.dex(),
 
                 // DEY
                 0x88 => self.dey(),
-                
+
                 // EOR opcodes
                 0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => {
                     self.eor(&other_map[&opcode].addressing_mode);
@@ -1081,49 +1094,52 @@ impl CPU {
 
                 // INX
                 0xE8 => self.inx(),
-                
+
                 // INY
                 0xC8 => self.iny(),
 
-                // JMP 
+                // JMP
                 0x4C | 0x6C => {
                     self.jmp(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // JSR
                 0x20 => {
                     self.stack_push_u16(self.program_counter + 2 - 1);
                     let target_address = self.mem_read_u16(self.program_counter);
                     self.program_counter = target_address;
-                },
+                }
                 //self.jsr(),
 
                 // LDA opcodes
                 0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
-                    print!("addressing_mode for lda: {:?}", &other_map[&opcode].addressing_mode);
+                    print!(
+                        "addressing_mode for lda: {:?}",
+                        &other_map[&opcode].addressing_mode
+                    );
                     self.lda(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // LDX opcodes
                 0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => {
                     self.ldx(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // LDY opcodes
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => {
                     self.ldy(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // LSR opcodes
                 0x4A | 0x46 | 0x56 | 0x4E | 0x5E => {
                     self.lsr(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // NOP
                 0xEA => self.nop(),
 
@@ -1132,10 +1148,10 @@ impl CPU {
                     self.ora(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // PHA
                 0x48 => self.pha(),
-                
+
                 // PHP
                 0x08 => self.php(),
 
@@ -1144,13 +1160,13 @@ impl CPU {
 
                 // PLP
                 0x28 => self.plp(),
-                
+
                 // ROL opcodes
                 0x2A | 0x26 | 0x36 | 0x2E | 0x3E => {
                     self.rol(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
-                
+
                 // ROR opcodes
                 0x6A | 0x66 | 0x76 | 0x6E | 0x7E => {
                     self.ror(&other_map[&opcode].addressing_mode);
@@ -1224,8 +1240,6 @@ impl CPU {
             if program_counter_state == self.program_counter {
                 self.program_counter += (other_map[&opcode].bytes - 1) as u16;
             }
-
-            callback(self);
         }
     }
 }
@@ -1252,7 +1266,8 @@ mod test {
         let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
-        cpu.load_and_run(vec![0xaa, 0x00]);
+        cpu.load(vec![0xaa, 0x00]);
+        cpu.run();
 
         assert_eq!(cpu.register_x, 10)
     }
@@ -1271,7 +1286,10 @@ mod test {
         let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.register_x = 0xff;
-        cpu.load_and_run(vec![0xe8, 0xe8, 0x00]);
+        // have to use load() and run() separately because load_and_run calls 
+        // reset() breaking the test
+        cpu.load(vec![0xe8, 0xe8, 0x00]);
+        cpu.run();
 
         assert_eq!(cpu.register_x, 1)
     }
@@ -1280,7 +1298,7 @@ mod test {
     fn test_lda_from_memory() {
         let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
-        cpu.mem_write(0x10, 0x55);
+        cpu.bus.mem_write(0x10, 0x55);
 
         cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
 

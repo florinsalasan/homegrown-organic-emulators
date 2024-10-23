@@ -1,7 +1,7 @@
 use std::usize;
 
-use crate::cpu::Memory;
 use crate::cartridge::Rom;
+use crate::cpu::Memory;
 
 //  _______________ $10000  _______________
 // | PRG-ROM       |       |               |
@@ -83,21 +83,36 @@ impl Memory for Bus {
     fn mem_write(&mut self, addr: u16, data: u8) {
         println!("Write to addr: {:04x} data: {:02x}", addr, data);
         match addr {
-            RAM ..= RAM_MIRRORS_END => {
+            RAM..=RAM_MIRRORS_END => {
                 let mirror_down_addr = addr & 0b11111111111;
                 self.cpu_vram[mirror_down_addr as usize] = data;
             }
-            PPU_REGISTERS ..= PPU_REGISTERS_MIRRORS_END => {
+            PPU_REGISTERS..=PPU_REGISTERS_MIRRORS_END => {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
                 todo!("PPU not supported yet")
             }
             0x8000..=0xFFFF => {
-                print!("Attempting to write to Cartridge ROM space fix this!!")
+                print!(
+                    "Attempting to write to Cartridge ROM space fix this!! Addr: {:x}",
+                    addr
+                )
             }
             _ => {
-                print!("Ignoring memory write access at {}", addr);
+                print!("Ignoring memory write access at {:x}", addr);
             }
         }
     }
+}
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::cartridge::test;
+
+    #[test]
+    fn test_mem_read_write_to_ram() {
+        let mut bus = Bus::new(test::test_rom());
+        bus.mem_write(0x01, 0x55);
+        assert_eq!(bus.mem_read(0x01), 0x55);
+    }
 }
