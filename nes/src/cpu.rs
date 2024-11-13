@@ -99,7 +99,7 @@ impl CPU {
             register_a: 0, // accumulator but I can't be bothered to change the name atm
             register_x: 0,
             register_y: 0,
-            status: 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT, // 8 bit register, representing 7 flags
+            status: 0 | INTERRUPT_DISABLE_BIT | NOT_A_FLAG_BIT, // 8 bit register, representing 7 flags
             program_counter: 0,
             stack_pointer: STACK_RESET_CODE, // The stack in the nes is 256 bytes and stored in
             bus: bus_,
@@ -543,25 +543,25 @@ impl CPU {
 
     // JMP - Jump, setting the program counter to the address specified
     // in memory, no flags are affected
-    pub fn jmp(&mut self, mode: &AddressingMode) {
-        if matches!(mode, AddressingMode::Immediate) {
-            // Absolute JMP
-            let addr = self.mem_read_u16(self.program_counter);
-            self.program_counter = addr;
+    pub fn jmp_absolute(&mut self) {
+        // Absolute JMP
+        let addr = self.mem_read_u16(self.program_counter);
+        self.program_counter = addr;
+    }
+
+    pub fn jmp_indirect(&mut self) {
+        // Indirect JMP
+        let mem_addr = self.mem_read_u16(self.program_counter);
+
+        let indirect_ref = if mem_addr & 0x00FF == 0x00FF {
+            let lo = self.mem_read(mem_addr);
+            let hi = self.mem_read(mem_addr & 0xFF00);
+            (hi as u16) << 8 | (lo as u16)
         } else {
-            // Indirect JMP
-            let mem_addr = self.mem_read_u16(self.program_counter);
+            self.mem_read_u16(mem_addr)
+        };
 
-            let indirect_ref = if mem_addr & 0x00FF == 0x00FF {
-                let lo = self.mem_read(mem_addr);
-                let hi = self.mem_read(mem_addr & 0xFF00);
-                (hi as u16) << 8 | (lo as u16)
-            } else {
-                self.mem_read_u16(mem_addr)
-            };
-
-            self.program_counter = indirect_ref;
-        }
+        self.program_counter = indirect_ref;
     }
 
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack
@@ -1099,10 +1099,12 @@ impl CPU {
                 0xC8 => self.iny(),
 
                 // JMP
-                0x4C | 0x6C => {
-                    self.jmp(&other_map[&opcode].addressing_mode);
+                0x4C => {
+                    self.jmp_absolute();
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
+
+                0x6C => self.jmp_indirect(),
 
                 // JSR
                 0x20 => {
@@ -1114,10 +1116,6 @@ impl CPU {
 
                 // LDA opcodes
                 0xA1 | 0xA5 | 0xA9 | 0xAD | 0xB1 | 0xB5 | 0xB9 | 0xBD => {
-                    print!(
-                        "addressing_mode for lda: {:?}",
-                        &other_map[&opcode].addressing_mode
-                    );
                     self.lda(&other_map[&opcode].addressing_mode);
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
@@ -1140,8 +1138,8 @@ impl CPU {
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
 
-                // NOP
-                0xEA => self.nop(),
+                // NOPs
+                0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x82 | 0x92 | 0xB2| 0xD2 | 0xF2 | 0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA | 0xEA => self.nop(),
 
                 // ORA opcodes
                 0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
@@ -1253,9 +1251,7 @@ mod test {
     fn test_0xa9_lda_immediate_load_data() {
         let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
-        print!("CPU dump before load_and_run: {:?}", cpu);
         dbg!(cpu.load_and_run(vec![0xa9, 0x05, 0x00]));
-        print!("CPU dump after load_and_run: {:?}", cpu);
         assert_eq!(cpu.register_a, 5);
         // assert!(cpu.status & 0b0000_0010 == 0b00);
         // assert!(cpu.status & 0b1000_0000 == 0);

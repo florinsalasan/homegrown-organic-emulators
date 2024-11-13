@@ -36,6 +36,14 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
         vec![
             OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing), // addressing mode is
             // listed as implied on the nesdev list of opcodes, NoneAddressing is a placeholder
+            OpCode::new(0x0B, "AAC", 2, 2, AddressingMode::Immediate),
+            OpCode::new(0x2B, "AAC", 2, 2, AddressingMode::Immediate),
+
+            OpCode::new(0x87, "AAX", 2, 3, AddressingMode::ZeroPage),
+            OpCode::new(0x97, "AAX", 2, 4, AddressingMode::ZeroPage_Y),
+            OpCode::new(0x83, "AAX", 2, 6, AddressingMode::Indirect_X),
+            OpCode::new(0x8F, "AAX", 3, 4, AddressingMode::Absolute),
+
             OpCode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate),
             OpCode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
             OpCode::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPage_X),
@@ -88,6 +96,11 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
                 5, /*+1 if page is crossed*/
                 AddressingMode::Indirect_Y,
             ),
+
+            OpCode::new(0x6B, "ARR", 2, 2, AddressingMode::Immediate),
+
+            OpCode::new(0x4B, "ASR", 2, 2, AddressingMode::Immediate),
+
             OpCode::new(0x0A, "ASL", 1, 2, AddressingMode::NoneAddressing), // This is supposed to
             // modify the accumulator directly, so I am using NoneAddressing as a placeholder
             OpCode::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
@@ -232,7 +245,7 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
             OpCode::new(0xFE, "INC", 3, 7, AddressingMode::Absolute_X),
             OpCode::new(0xE8, "INX", 1, 2, AddressingMode::NoneAddressing), // implied
             OpCode::new(0xC8, "INY", 1, 2, AddressingMode::NoneAddressing), // implied
-            OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::Immediate),
+            OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::NoneAddressing),
             OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::NoneAddressing), // indirect, this is the
             // only opcode to use this addressing mode
             OpCode::new(0x20, "JSR", 3, 6, AddressingMode::NoneAddressing),
