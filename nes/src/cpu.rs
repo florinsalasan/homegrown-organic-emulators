@@ -208,6 +208,26 @@ impl CPU {
         }
     }
 
+    // AAC, AND byte with accumulator (reg_a) if result is negative set carry flag
+    pub fn aac(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value_to_and = self.mem_read(addr);
+
+        self.register_a = self.register_a & value_to_and;
+        self.set_zero_and_neg_flags(self.register_a);
+        if self.status & NEGATIVE_BIT == NEGATIVE_BIT {
+            self.status = self.status | CARRY_BIT;
+        }
+    }
+
+    // AAX, AND reg_x with reg_a, storing it in memory
+    pub fn aax(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value_to_store = self.register_x & self.register_a;
+        self.set_zero_and_neg_flags(value_to_store);
+        self.mem_write(addr, value_to_store);
+    }
+
     // ADC, add with carry, reading the value of a given address, add the value
     // to the accumulator with the carry bit, if overflow occurs, carry bit is
     // set enabling multiple byte addition
@@ -261,6 +281,45 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_a);
     }
 
+    // ARR: AND the byte with the accumulator (reg_a), then rotate one bit right 
+    // in the accumulator, then check bits 5 and 6 setting and clearing Carry 
+    // and Overflow flags as needed
+    pub fn arr(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = self.register_a & value;
+        let mut shifted_bit = self.register_a & 0b0000_0001;
+        shifted_bit = shifted_bit << 7;
+
+        self.register_a = self.register_a >> 1;
+        self.register_a = self.register_a | shifted_bit;
+
+        // the value in the accumulator should be shifted, so do checks on bits
+        // 5 and 6 as required by the specs
+        let bit_5_set = self.register_a & NOT_A_FLAG_BIT == NOT_A_FLAG_BIT;
+        let bit_6_set = self.register_a & OVERFLOW_BIT == OVERFLOW_BIT;
+
+        if bit_5_set && bit_6_set {
+            self.status = self.status | CARRY_BIT;
+            self.status = self.status & !OVERFLOW_BIT;
+        } else if !bit_5_set && !bit_6_set {
+            self.status = self.status & !CARRY_BIT;
+            self.status = self.status & !OVERFLOW_BIT;
+        } else if bit_5_set && !bit_6_set {
+            self.status = self.status & !CARRY_BIT;
+            self.status = self.status | OVERFLOW_BIT;
+        } else if !bit_5_set && bit_6_set {
+            self.status = self.status | CARRY_BIT;
+            self.status = self.status | OVERFLOW_BIT;
+        }
+        // Status should be done here, specs claim that Negative and Zero flags
+        // are also affected by this instruction, but the description doesn't
+        // say how it does, so I'll assume that it's from the rotated value in
+        // the accumulator and set zero and negative flags from there
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
     // ASL - Arithmetic Shift Left, the operation shifts all bits of the accumulator (register_a)
     // or the memory contents one bit to the left, bit 7 is placed into the carry
     // flag and bit 0 is set to 0. Zero and Negative flags also need to be updated
@@ -300,6 +359,27 @@ impl CPU {
         }
 
         self.set_zero_and_neg_flags(value_to_modify);
+    }
+
+    // ASR - AND byte with the accumulator, then shift the value to the right by
+    // one bit in the accumulator
+    pub fn asr(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode); 
+        let value_in_memory = self.mem_read(addr);
+
+        self.register_a = self.register_a & value_in_memory;
+        self.register_a = self.register_a >> 1;
+
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // ATX - AND byte with accumulator, then transfer the accumulator to reg_x
+    pub fn atx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode); 
+        let value_in_memory = self.mem_read(addr);
+
+        self.register_x = self.register_a & value_in_memory;
+        self.set_zero_and_neg_flags(self.register_x);
     }
 
     // BCC - Branch if carry clear: if the carry flag is clear, add the relative
