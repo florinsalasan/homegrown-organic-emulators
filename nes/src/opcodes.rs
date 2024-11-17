@@ -555,6 +555,6 @@ mod tests {
         init_opcodes();
         // print!("{:?}", init_opcodes_hashmap());
         let ops_hashmap = init_opcodes_hashmap();
-        assert!(ops_hashmap.keys().len() == 151);
+        assert_eq!(ops_hashmap.keys().len(), 256);
     }
 }

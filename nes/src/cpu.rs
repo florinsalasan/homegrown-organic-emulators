@@ -1,5 +1,7 @@
 use std::usize;
 
+use sdl2::libc::SEEK_CUR;
+
 use crate::bus::Bus;
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
@@ -382,6 +384,32 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_x);
     }
 
+    // AXA - AND the value of reg_x with reg_a, then AND the result with 7 and
+    // store in memory
+    pub fn axa(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode); 
+
+        let first_res = self.register_x & self.register_a;
+        let second_res = first_res & 7;
+
+        self.mem_write(addr, second_res);
+    }
+
+    // AXS - AND register_x with register_a storing it in register_x, then
+    // subtract byte from register_x without borrow, sets N, Z, C flags
+    pub fn axs(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode); 
+        let value_to_subtract = self.mem_read(addr);
+
+        let first_res = self.register_x & self.register_a;
+        // This might fail, make it better if it does
+        let second_res = first_res - value_to_subtract;
+        self.register_x = second_res;
+
+        self.set_zero_and_neg_flags(self.register_x);
+
+    }
+
     // BCC - Branch if carry clear: if the carry flag is clear, add the relative
     // displacement to the program counter to cause a branch to a new location
     // absolutely no idea what that means
@@ -559,6 +587,15 @@ impl CPU {
         self.set_zero_and_neg_flags(diff_in_values);
     }
 
+    // DCP - Subtract one from memory without borrow, setting carry flag
+    pub fn dcp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        let new_value = value - 1;
+        self.mem_write(addr, new_value);
+    }
+
     // DEC - Decrement memory: Subtract one from the value held a the specified memory
     // location setting zero and negative flags as needed overflow is ignored for some reason.
     pub fn dec(&mut self, mode: &AddressingMode) {
@@ -569,6 +606,11 @@ impl CPU {
         self.mem_write(addr, value);
 
         self.set_zero_and_neg_flags(value);
+    }
+
+    // DOP - Double NOP - argument has no significance, no status flags change
+    pub fn dop(&mut self) {
+        return;
     }
 
     // DEX - Decrement X register: Subtract one from the value held in register_x
@@ -621,6 +663,18 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_y);
     }
 
+    // ISC - Increment memory by one, then subtract the value from register_a
+    // with borrow, settings status flags N, V, Z, C.
+    pub fn isc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let mut value = self.mem_read(addr);
+
+        // Don't know what flags are expected here tbh for V and C
+        value = value + 1;
+        self.register_a = self.register_a.wrapping_sub(value);
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
     // JMP - Jump, setting the program counter to the address specified
     // in memory, no flags are affected
     pub fn jmp_absolute(&mut self) {
@@ -644,6 +698,12 @@ impl CPU {
         self.program_counter = indirect_ref;
     }
 
+    // KIL - Stops the program counter, locking up the processor ???
+    // Not sure how to implement this properly
+    pub fn kil(&mut self) {
+        return;
+    }
+
     // JSR - Jump to a subroutine: pushes the address (minus 1) of the return point on to the stack
     // then sets the program counter to the target memory address
     // I'm calling this straight from the match statement in the run_with_callback function
@@ -652,6 +712,32 @@ impl CPU {
     // let target_address = self.mem_read_u16(self.program_counter);
     // self.program_counter = target_address;
     // }
+    
+    // LAR - AND memory with stack pointer, transfer the result to register_a, 
+    // register_x and the stack pointer setting N and Z flags;
+    pub fn lar(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        let anded_value = value & self.stack_pointer;
+        self.stack_pointer = anded_value;
+        self.register_a = anded_value;
+        self.register_x = anded_value;
+
+        self.set_zero_and_neg_flags(anded_value);
+    }
+
+    // LAX - load register_a and register_x with the value from memory, setting
+    // N and Z flags;
+    pub fn lax(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = value;
+        self.register_x = value;
+
+        self.set_zero_and_neg_flags(value);
+    }
 
     // LDA that takes in different AddressingModes
     // loads a byte of memory into the accumulator (register_a) and sets zero and neg flags
@@ -764,6 +850,14 @@ impl CPU {
     pub fn plp(&mut self) {
         self.status = self.stack_pop();
         self.status = (self.status | NOT_A_FLAG_BIT) & !BREAK_BIT;
+    }
+
+    // RLA - Rotate one bit left in memory, then AND the accumulator with the 
+    // rotated memory value, sets N, Z, C flags
+    pub fn rla(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value_to_modify = self.mem_read(addr);
+
     }
 
     // ROL - Rotate left: Move each of the bits in either Accumulator or Memory one place
