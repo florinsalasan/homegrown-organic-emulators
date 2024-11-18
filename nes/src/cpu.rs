@@ -3,7 +3,7 @@ use std::usize;
 use sdl2::libc::SEEK_CUR;
 
 use crate::bus::Bus;
-use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
+use crate::opcodes::{init_opcodes, init_opcodes_hashmap, OpCode};
 
 // # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
 //
@@ -856,7 +856,13 @@ impl CPU {
     // rotated memory value, sets N, Z, C flags
     pub fn rla(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
-        let value_to_modify = self.mem_read(addr);
+
+        // May need to re-do rol method
+        self.rol(mode);
+
+        let value_rotated = self.mem_read(addr);
+
+        self.register_a = self.register_a & value_rotated;
 
     }
 
@@ -944,6 +950,21 @@ impl CPU {
         }
     }
 
+    // RRA - Rotate one bit right in memory, then add that value to accumulator 
+    // with carry, setting N, V, Z, C flags
+    pub fn rra(&mut self, mode: &AddressingMode) {
+
+        let addr = self.get_operand_address(mode);
+
+        // May need to re-do ror method
+        self.ror(mode);
+
+        let value_rotated = self.mem_read(addr);
+
+        self.register_a = self.register_a + value_rotated;
+
+    }
+
     // RTI - Return from Interrupt: Used at the end of an interrupt processing routine,
     // pulls the processor flags from the stack followed by the program counter, guide
     // sets break and not a flag manually, nesdev says just keep the values pulled from stack
@@ -1024,6 +1045,30 @@ impl CPU {
         self.status = self.status | INTERRUPT_DISABLE_BIT;
     }
 
+    // SLO - Shift left one bit in memory, then OR register_a with memory
+    // setting status flags N, Z, C
+    pub fn slo(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        
+        self.rol(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = self.register_a | value;
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // SRE - Shift right one bit in memory, then EOR register_a with memory
+    // sets status flags N, Z, C
+    pub fn sre(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        
+        self.ror(mode);
+        let value = self.mem_read(addr);
+
+        self.register_a = self.register_a ^ value;
+        self.set_zero_and_neg_flags(self.register_a);
+    }
+
     // STA, copies value from register A into memory
     pub fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
@@ -1040,6 +1085,23 @@ impl CPU {
     pub fn sty(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(addr, self.register_y);
+    }
+
+    // SXA - AND register_x with the high byte of the target address of the 
+    // argument + 1, storing the result in memory
+    pub fn sxa(&mut self) {
+        let mem_address = self.mem_read_u16(self.program_counter) + self.register_y as u16;
+        let data = self.register_x & (mem_address >> 8) as u8;
+        self.mem_write(mem_address, data);
+    }
+
+
+    // SYA - AND register_y with the high byte of the target address of the 
+    // argument + 1, storing the result in memory
+    pub fn sya(&mut self) {
+        let mem_address = self.mem_read_u16(self.program_counter) + self.register_x as u16;
+        let data = self.register_y & (mem_address >> 8) as u8;
+        self.mem_write(mem_address, data);
     }
 
     // 0xAA TAX (Transfer accumulator to register X) set register_x
@@ -1064,6 +1126,11 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_x);
     }
 
+    // TOP - Triple NOP, just return do nothing
+    pub fn top(&mut self) {
+        return;
+    }
+
     // TXA - transfer x to accumulator;
     // Copies the current contents of the x register into the accumulator, set zero & neg flags
     pub fn txa(&mut self) {
@@ -1081,6 +1148,23 @@ impl CPU {
     pub fn tya(&mut self) {
         self.register_a = self.register_y;
         self.set_zero_and_neg_flags(self.register_a);
+    }
+
+    // XAA - Unknown operation according to documentation so... yeah
+    pub fn xaa(&mut self) {
+        return;
+    }
+
+    // XAS - AND the register_x with register_a and store the result in the 
+    // stack pointer, then and teh stack pointer with the high byte of the
+    // target address of the argument + 1, storing the result in memory
+    pub fn xas(&mut self) {
+        let data = self.register_a & self.register_x;
+        self.stack_pointer = data;
+        let mem_address = self.mem_read_u16(self.program_counter) + self.register_y as u16;
+
+        let data = ((mem_address >> 8) as u8 + 1) & self.stack_pointer;
+        self.mem_write(mem_address, data);
     }
 
     pub fn set_zero_and_neg_flags(&mut self, result: u8) {
@@ -1312,8 +1396,8 @@ impl CPU {
                     // self.program_counter += (other_map[&opcode].bytes as u16) - 1;
                 }
 
-                // NOPs
-                0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x82 | 0x92 | 0xB2| 0xD2 | 0xF2 | 0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA | 0xEA => self.nop(),
+                // NOP
+                0xEA => self.nop(),
 
                 // ORA opcodes
                 0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => {
@@ -1402,11 +1486,106 @@ impl CPU {
                 // TYA
                 0x98 => self.tya(),
 
-                _ => {
-                    self.program_counter = self.program_counter.wrapping_add(1);
-                    print!("Build out the massive switch statement for opcodes, this time it broke on {:#04x} \n", opcode);
-                    return;
+                // Unofficial opcodes:
+                // AAC
+                0x0B | 0x2B => {
+                    self.aac(&other_map[&opcode].addressing_mode);
                 }
+
+                // AAX 
+                0x87 | 0x97 | 0x83 | 0x8F => {
+                    self.aax(&other_map[&opcode].addressing_mode);
+                }
+
+                // ARR
+                0x6B => self.arr(&other_map[&opcode].addressing_mode),
+
+                // ASR
+                0x4B => self.asr(&other_map[&opcode].addressing_mode),
+
+                // ATX
+                0xAB => self.atx(&other_map[&opcode].addressing_mode),
+
+                // AXA
+                0x9F | 0x93 => {
+                    self.axa(&other_map[&opcode].addressing_mode);
+                }
+
+                // AXS 
+                0xCB => self.axs(&other_map[&opcode].addressing_mode),
+
+                // DCP 
+                0xC7 | 0xD7 | 0xCF | 0xDF | 0xDB |0xC3 | 0xD3 => {
+                    self.dcp(&other_map[&opcode].addressing_mode);
+                }
+
+                // DOP
+                0x04 | 0x14 | 0x34 | 0x44 | 0x54 | 0x64 | 0x74 | 0x80 | 0x82 | 0x89 |0xC2 | 0xD4 | 0xE2 | 0xF4 => {
+                    self.dop();
+                }
+
+                // ISC
+                0xE7 | 0xF7 | 0xEF | 0xFF | 0xFB |0xE3 | 0xF3 => {
+                    self.isc(&other_map[&opcode].addressing_mode);
+                }
+
+                // KIL 
+                0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xB2 |0xD2 | 0xF2 => {
+                    self.kil();
+                }
+
+                // LAR
+                0xBB => self.lar(&other_map[&opcode].addressing_mode),
+
+                // LAX
+                0xA7 | 0xB7 | 0xAF | 0xBF | 0xA3 | 0xB3 => self.lax(&other_map[&opcode].addressing_mode),
+
+                // Unofficial NOPs
+                0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA => self.nop(),
+
+                // RLA 
+                0x27 | 0x37 | 0x2F | 0x3F | 0x3B | 0x23 | 0x33 => {
+                    self.rla(&other_map[&opcode].addressing_mode);
+                }
+
+                // RRA
+                0x67 | 0x77 | 0x6F | 0x7F | 0x7B | 0x63 | 0x73 => {
+                    self.rra(&other_map[&opcode].addressing_mode);
+                }
+
+                // Unofficial SBC
+                0xEB => self.sbc(&other_map[&opcode].addressing_mode),
+
+                // SLO
+                0x07 | 0x17 | 0x0F | 0x1F | 0x1B | 0x03 | 0x13 => {
+                    self.slo(&other_map[&opcode].addressing_mode);
+                }
+
+                // SRE
+                0x47 | 0x57 | 0x4F | 0x5F | 0x5B | 0x43 | 0x53 => {
+                    self.sre(&other_map[&opcode].addressing_mode);
+                }
+
+                // SXA
+                0x9E => self.sxa(),
+
+                // SYA
+                0x9C => self.sya(),
+
+                // TOP
+                0x0C | 0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.top(),
+
+                // XAA
+                0x8B => self.xaa(),
+
+                // XAS
+                0x9B => self.xas(),
+
+                // _ => {
+                    // self.program_counter = self.program_counter.wrapping_add(1);
+                    // print!("Build out the massive switch statement for opcodes, this time it broke on {:#04x} \n", opcode);
+                    // return;
+                // }
             }
 
             if program_counter_state == self.program_counter {
