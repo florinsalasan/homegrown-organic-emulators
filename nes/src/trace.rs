@@ -54,7 +54,7 @@ pub fn trace(cpu: &CPU) -> String {
                 AddressingMode::Indirect_Y => format!(
                     "(${:02x}),Y = {:04x} @ {:04x} = {:02x}",
                     address, 
-                    (address.wrapping_add(cpu.register_y)),
+                    (mem_addr.wrapping_sub(cpu.register_y as u16)),
                     mem_addr,
                     stored_value
                 ),
@@ -188,6 +188,11 @@ mod test {
         cpu.run_with_callback(|cpu| {
             result.push(trace(cpu));
         });
+        print!("{:?}", cpu);
+        for line in &result{
+            print!("\n{:?}", line);
+        }
+
         assert_eq!(
             "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
             result[0]

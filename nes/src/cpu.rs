@@ -592,7 +592,7 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
 
-        let new_value = value - 1;
+        let new_value = value.wrapping_sub(1);
         self.mem_write(addr, new_value);
     }
 
@@ -670,7 +670,7 @@ impl CPU {
         let mut value = self.mem_read(addr);
 
         // Don't know what flags are expected here tbh for V and C
-        value = value + 1;
+        value = value.wrapping_add(1);
         self.register_a = self.register_a.wrapping_sub(value);
         self.set_zero_and_neg_flags(self.register_a);
     }
@@ -914,9 +914,9 @@ impl CPU {
     // ROR - rotate right, same as rol, only shift right, fill bit 7 with carry flag, and
     // old bit 0 is new carry flag. This is also broken possibly, redo shifts and flags
     pub fn ror(&mut self, mode: &AddressingMode) {
-        let mut value_to_modify: u8;
+        let value_to_modify: u8;
         let mut addr: u16 = 0;
-        if matches!(mode, AddressingMode::NoneAddressing) {
+        if let AddressingMode::NoneAddressing = mode {
             // modify accumulator directly
             value_to_modify = self.register_a;
         } else {
@@ -932,21 +932,22 @@ impl CPU {
         }
 
         // Now we shift right and set the 0th bit to the saved value from earlier
-        value_to_modify = value_to_modify >> 1;
+        // value_to_modify = value_to_modify >> 1;
+        let mut shifted_value = value_to_modify >> 1;
         if is_carry_set {
-            value_to_modify = value_to_modify | CARRY_BIT;
+            shifted_value = shifted_value | NEGATIVE_BIT;
         } // else rust should have already set it to zero when shifting, I think
           // TODO: DOUBLE CHECK RUST DEFAULT BEHAVIOUR ON SHIFTING
 
-        self.set_zero_and_neg_flags(value_to_modify);
+        self.set_zero_and_neg_flags(shifted_value);
 
-        if matches!(mode, AddressingMode::NoneAddressing) {
+        if let AddressingMode::NoneAddressing = mode {
             // modify accumulator directly
-            self.register_a = value_to_modify;
+            self.register_a = shifted_value;
         } else {
             // this should only ever write to memory to the proper location, should
             // never run if addressingMode is Accumulator
-            self.mem_write(addr, value_to_modify);
+            self.mem_write(addr, shifted_value);
         }
     }
 
@@ -961,7 +962,7 @@ impl CPU {
 
         let value_rotated = self.mem_read(addr);
 
-        self.register_a = self.register_a + value_rotated;
+        self.register_a = self.register_a.wrapping_add(value_rotated);
 
     }
 
@@ -1197,7 +1198,7 @@ impl CPU {
         self.register_a = 0;
         self.register_x = 0;
         self.register_y = 0;
-        self.status = 0 | INTERRUPT_DISABLE_BIT | NEGATIVE_BIT;
+        self.status = 0 | INTERRUPT_DISABLE_BIT | NOT_A_FLAG_BIT;
         self.stack_pointer = STACK_RESET_CODE;
         // Not going to reset memory yet because I'd need to rewrite tests to call memory writing
         // in machine code
@@ -1232,6 +1233,7 @@ impl CPU {
     where
         F: FnMut(&mut CPU),
     {
+        print!("{:?}", self.bus);
         init_opcodes();
         // might as well remove the hashmap? But the method gets_or_inits the pub static
         // hashmap so maybe it is needed, I have no idea what is happening behind the curtain
