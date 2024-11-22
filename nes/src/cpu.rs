@@ -151,7 +151,7 @@ impl CPU {
                 let base = self.mem_read(addr);
 
                 let lo = self.mem_read(base as u16);
-                let hi = self.mem_read((base as u16).wrapping_add(1) as u16);
+                let hi = self.mem_read((base as u8).wrapping_add(1) as u16);
                 let deref_base = (hi as u16) << 8 | (lo as u16);
                 let deref = deref_base.wrapping_add(self.register_y as u16);
                 deref
@@ -222,11 +222,10 @@ impl CPU {
         }
     }
 
-    // AAX, AND reg_x with reg_a, storing it in memory
-    pub fn aax(&mut self, mode: &AddressingMode) {
+    // SAX, AND reg_x with reg_a, storing it in memory
+    pub fn sax(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value_to_store = self.register_x & self.register_a;
-        self.set_zero_and_neg_flags(value_to_store);
         self.mem_write(addr, value_to_store);
     }
 
@@ -1233,7 +1232,6 @@ impl CPU {
     where
         F: FnMut(&mut CPU),
     {
-        print!("{:?}", self.bus);
         init_opcodes();
         // might as well remove the hashmap? But the method gets_or_inits the pub static
         // hashmap so maybe it is needed, I have no idea what is happening behind the curtain
@@ -1494,9 +1492,9 @@ impl CPU {
                     self.aac(&other_map[&opcode].addressing_mode);
                 }
 
-                // AAX 
+                // SAX 
                 0x87 | 0x97 | 0x83 | 0x8F => {
-                    self.aax(&other_map[&opcode].addressing_mode);
+                    self.sax(&other_map[&opcode].addressing_mode);
                 }
 
                 // ARR

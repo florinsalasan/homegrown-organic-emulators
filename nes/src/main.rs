@@ -68,7 +68,7 @@ fn main() {
     // ];
 
     // load the game rom
-    let bytes: Vec<u8> = std::fs::read("ROMs/cpu_dummy_reads.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("ROMs/nestest.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let bus = Bus::new(rom);

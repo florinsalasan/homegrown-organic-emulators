@@ -85,7 +85,7 @@ pub fn trace(cpu: &CPU) -> String {
                         let jmp_addr = if address & 0x00FF == 0x00FF {
                             let lo = cpu.mem_read(address);
                             let hi = cpu.mem_read(address & 0xFF00);
-                            (hi as u16) | (lo as u16)
+                            (hi as u16) << 8 | (lo as u16)
                         } else {
                             cpu.mem_read_u16(address)
                         };
