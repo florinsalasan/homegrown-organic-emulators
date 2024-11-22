@@ -1,6 +1,7 @@
 use std::usize;
 
 use sdl2::libc::SEEK_CUR;
+use sdl2::sys::XBufferOverflow;
 
 use crate::bus::Bus;
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap, OpCode};
@@ -593,6 +594,10 @@ impl CPU {
 
         let new_value = value.wrapping_sub(1);
         self.mem_write(addr, new_value);
+        if new_value == 255 {
+            self.status = self.status | CARRY_BIT;
+            self.set_zero_and_neg_flags(value);
+        } 
     }
 
     // DEC - Decrement memory: Subtract one from the value held a the specified memory
@@ -662,16 +667,12 @@ impl CPU {
         self.set_zero_and_neg_flags(self.register_y);
     }
 
-    // ISC - Increment memory by one, then subtract the value from register_a
+    // ISB - Increment memory by one, then subtract the value from register_a
     // with borrow, settings status flags N, V, Z, C.
-    pub fn isc(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        let mut value = self.mem_read(addr);
-
-        // Don't know what flags are expected here tbh for V and C
-        value = value.wrapping_add(1);
-        self.register_a = self.register_a.wrapping_sub(value);
-        self.set_zero_and_neg_flags(self.register_a);
+    pub fn isb(&mut self, mode: &AddressingMode) {
+        // let addr = self.get_operand_address(mode);
+        self.inc(mode);
+        self.sbc(mode);
     }
 
     // JMP - Jump, setting the program counter to the address specified
@@ -953,16 +954,8 @@ impl CPU {
     // RRA - Rotate one bit right in memory, then add that value to accumulator 
     // with carry, setting N, V, Z, C flags
     pub fn rra(&mut self, mode: &AddressingMode) {
-
-        let addr = self.get_operand_address(mode);
-
-        // May need to re-do ror method
         self.ror(mode);
-
-        let value_rotated = self.mem_read(addr);
-
-        self.register_a = self.register_a.wrapping_add(value_rotated);
-
+        self.adc(mode);
     }
 
     // RTI - Return from Interrupt: Used at the end of an interrupt processing routine,
@@ -1048,25 +1041,15 @@ impl CPU {
     // SLO - Shift left one bit in memory, then OR register_a with memory
     // setting status flags N, Z, C
     pub fn slo(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        
-        self.rol(mode);
-        let value = self.mem_read(addr);
-
-        self.register_a = self.register_a | value;
-        self.set_zero_and_neg_flags(self.register_a);
+        self.asl(mode);
+        self.ora(mode);
     }
 
     // SRE - Shift right one bit in memory, then EOR register_a with memory
     // sets status flags N, Z, C
     pub fn sre(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        
-        self.ror(mode);
-        let value = self.mem_read(addr);
-
-        self.register_a = self.register_a ^ value;
-        self.set_zero_and_neg_flags(self.register_a);
+        self.lsr(mode);
+        self.eor(mode);
     }
 
     // STA, copies value from register A into memory
@@ -1524,9 +1507,9 @@ impl CPU {
                     self.dop();
                 }
 
-                // ISC
+                // ISB
                 0xE7 | 0xF7 | 0xEF | 0xFF | 0xFB |0xE3 | 0xF3 => {
-                    self.isc(&other_map[&opcode].addressing_mode);
+                    self.isb(&other_map[&opcode].addressing_mode);
                 }
 
                 // KIL 

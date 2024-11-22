@@ -72,9 +72,11 @@ impl Memory for Bus {
                 // todo!("PPU not supported yet")
                 0
             }
-            0x8000..=0xFFFF => self.read_prg_rom(addr),
+            0x8000..=0xFFFF => {
+                self.read_prg_rom(addr)
+            }
             _ => {
-                println!("Ignoring memory read access at {}\n", addr);
+                println!("Ignoring memory read access at {:04x}\n", addr);
                 0
             }
         }

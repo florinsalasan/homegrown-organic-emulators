@@ -279,13 +279,13 @@ pub fn init_opcodes() -> &'static [OpCode<'static>] {
             OpCode::new(0xE8, "INX", 1, 2, AddressingMode::NoneAddressing), // implied
             OpCode::new(0xC8, "INY", 1, 2, AddressingMode::NoneAddressing), // implied
             
-            OpCode::new(0xE7, "*ISC", 2, 5, AddressingMode::ZeroPage), 
-            OpCode::new(0xF7, "*ISC", 2, 6, AddressingMode::ZeroPage_X), 
-            OpCode::new(0xEF, "*ISC", 3, 6, AddressingMode::Absolute), 
-            OpCode::new(0xFF, "*ISC", 3, 7, AddressingMode::Absolute_X), 
-            OpCode::new(0xFB, "*ISC", 3, 7, AddressingMode::Absolute_Y), 
-            OpCode::new(0xE3, "*ISC", 2, 8, AddressingMode::Indirect_X), 
-            OpCode::new(0xF3, "*ISC", 2, 8, AddressingMode::Indirect_Y), 
+            OpCode::new(0xE7, "*ISB", 2, 5, AddressingMode::ZeroPage), 
+            OpCode::new(0xF7, "*ISB", 2, 6, AddressingMode::ZeroPage_X), 
+            OpCode::new(0xEF, "*ISB", 3, 6, AddressingMode::Absolute), 
+            OpCode::new(0xFF, "*ISB", 3, 7, AddressingMode::Absolute_X), 
+            OpCode::new(0xFB, "*ISB", 3, 7, AddressingMode::Absolute_Y), 
+            OpCode::new(0xE3, "*ISB", 2, 8, AddressingMode::Indirect_X), 
+            OpCode::new(0xF3, "*ISB", 2, 8, AddressingMode::Indirect_Y), 
             
             OpCode::new(0x4C, "JMP", 3, 3, AddressingMode::NoneAddressing),
             OpCode::new(0x6C, "JMP", 3, 5, AddressingMode::NoneAddressing), // indirect, this is the
