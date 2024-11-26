@@ -3,6 +3,7 @@ pub mod cartridge;
 pub mod cpu;
 pub mod opcodes;
 pub mod trace;
+pub mod ppu;
 
 use bus::Bus;
 use cartridge::Rom;
@@ -147,7 +148,7 @@ fn color(byte: u8) -> Color {
 }
 
 // helper to read the screen state
-fn read_screen_state(cpu: &CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
+fn read_screen_state(cpu: &mut CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
     for i in 0x0200..0x0600 {

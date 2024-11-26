@@ -5,7 +5,7 @@ use crate::cpu::Memory;
 use crate::cpu::CPU;
 use crate::opcodes::{init_opcodes, init_opcodes_hashmap};
 
-pub fn trace(cpu: &CPU) -> String {
+pub fn trace(cpu: &mut CPU) -> String {
     init_opcodes();
     let other_map = init_opcodes_hashmap();
 
