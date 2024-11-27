@@ -25,7 +25,12 @@ pub struct NesPPU {
 
     internal_data_buf: u8,
 
+    scanline: u16,
+    cycles: usize,
+
     pub mirroring: Mirroring,
+
+    pub nmi_interrupt: Option<u8>,
 }
 
 pub trait PPU {
@@ -47,6 +52,32 @@ impl NesPPU {
         NesPPU::new(vec![0; 2048], Mirroring::HORIZONTAL)
     }
 
+    fn poll_nmi_interrupt(&mut self) -> Option<u8> {
+        self.nmi_interrupt.take()
+    }
+
+    pub fn tick(&mut self, cycles: u8) -> bool {
+        self.cycles += cycles as usize;
+        if self.cycles >= 341 {
+            self.cycles = self.cycles - 341;
+            self.scanline += 1;
+
+            if self.scanline == 241 {
+                if self.ctrl.generate_vblank_nmi() {
+                    self.status.set_vblank_status(true);
+                    todo!("Trigger an NMI interrupt")
+                }
+            }
+
+            if self.scanline >= 262 {
+                self.scanline = 0;
+                self.status.reset_vblank_status();
+                return true;
+            }
+        }
+        return false;
+    }
+
     pub fn new(chr_rom: Vec<u8>, mirroring: Mirroring) -> Self {
         NesPPU { 
             chr_rom, 
@@ -61,6 +92,9 @@ impl NesPPU {
             vram: [0; 2048], 
             oam_data: [0; 64 * 4], 
             internal_data_buf: 0,
+            scanline: 0,
+            cycles: 0,
+            nmi_interrupt: None,
         }
     }
 
@@ -104,7 +138,11 @@ impl PPU for NesPPU {
     fn write_to_ctrl(&mut self, value: u8) {
         // TODO: there's a status set here in his code that doesn't get used
         // so I've skipped it for now
+        let before_nmi_status = self.ctrl.generate_vblank_nmi();
         self.ctrl.update(value);
+        if !before_nmi_status && self.ctrl.generate_vblank_nmi() && self.status.is_in_vblank() {
+            self.nmi_interrupt = Some(1);
+        }
     }
 
     fn write_to_data(&mut self, value: u8) {

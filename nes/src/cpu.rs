@@ -1,10 +1,7 @@
 use std::usize;
 
-use sdl2::libc::SEEK_CUR;
-use sdl2::sys::XBufferOverflow;
-
 use crate::bus::Bus;
-use crate::opcodes::{init_opcodes, init_opcodes_hashmap, OpCode};
+use crate::opcodes::{init_opcodes, init_opcodes_hashmap };
 
 // # Status Register (P) http://wiki.nesdev.com/w/index.php/Status_flags
 //
@@ -94,6 +91,32 @@ impl Memory for CPU {
     fn mem_write_u16(&mut self, pos: u16, data: u16) {
         self.bus.mem_write_u16(pos, data)
     }
+}
+
+fn page_cross(addr1: u16, addr2: u16) -> bool {
+    addr1 & 0xFF00 != addr2 & 0xFF00
+}
+
+mod interrupt {
+    #[derive(PartialEq, Eq)]
+    pub enum InterruptType {
+        NMI,
+    }
+
+    #[derive(PartialEq, Eq)]
+    pub(super) struct Interrupt {
+        pub(super) itype: InterruptType,
+        pub(super) vector_addr: u16,
+        pub(super) b_flag_mask: u8,
+        pub(super) cpu_cycles: u8,
+    }
+
+    pub(super) const NMI: Interrupt = Interrupt {
+        itype: InterruptType::NMI,
+        vector_addr: 0xFFFA,
+        b_flag_mask: 0b0010_0000,
+        cpu_cycles: 2,
+    };
 }
 
 impl CPU {
@@ -1201,6 +1224,19 @@ impl CPU {
         self.program_counter = 0x0600;
     }
 
+    pub fn interrupt_nmi(&mut self) {
+        self.stack_push_u16(self.program_counter);
+        let mut flag = self.status.clone();
+        flag = flag & !BREAK_BIT;
+        flag = flag | NOT_A_FLAG_BIT;
+
+        self.stack_push(flag);
+        self.status = self.status | INTERRUPT_DISABLE_BIT;
+
+        self.bus.tick(2);
+        self.program_counter = self.mem_read_u16(0xFFFA);
+    }
+
     // The main CPU loop is:
     // Fetch next instruction from memory,
     // Decode the instruction,
@@ -1222,10 +1258,17 @@ impl CPU {
 
         loop {
             callback(self);
+
+            if let Some(_nmi) = self.bus.poll_nmi_status() {
+                self.interrupt_nmi();
+            }
+
             let opcode = self.mem_read(self.program_counter);
             let mapped_opcode = other_map.get(&opcode).expect(&format!("{:x} is not recognized", opcode));
             self.program_counter += 1; // could wrapping add this maybe?
             let program_counter_state = self.program_counter;
+
+            self.bus.tick(mapped_opcode.cycles);
 
             match &mapped_opcode.opcode_num {
                 // BRK
