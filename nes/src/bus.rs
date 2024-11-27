@@ -88,16 +88,16 @@ impl Memory for Bus {
             0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
                 panic!("Attempt to read from write-only PPU address {:x}", addr);
             }
+            0x2002 => self.ppu.read_status(),
+            0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
 
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
                 // todo!("PPU not supported yet")
-                0
+                self.mem_read(_mirror_down_addr)
             }
-            0x8000..=0xFFFF => {
-                self.read_prg_rom(addr)
-            }
+            0x8000..=0xFFFF => self.read_prg_rom(addr),
             _ => {
                 println!("Ignoring memory read access at {:04x}\n", addr);
                 0
@@ -114,6 +114,21 @@ impl Memory for Bus {
             0x2000 => {
                 self.ppu.write_to_ctrl(data);
             }
+            0x2001 => {
+                self.ppu.write_to_mask(data);
+            }
+            0x2002 => {
+                panic!("Attempt to write to PPU status register");
+            }
+            0x2003 => {
+                self.ppu.write_to_oam_addr(data);
+            }
+            0x2004 => {
+                self.ppu.write_to_oam_data(data);
+            }
+            0x2005 => {
+                self.ppu.write_to_scroll(data);
+            }
             0x2006 => {
                 self.ppu.write_to_ppu_addr(data);
             }
@@ -123,6 +138,7 @@ impl Memory for Bus {
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
                 // todo!("PPU not supported yet")
+                self.mem_write(_mirror_down_addr, data);
             }
             0x8000..=0xFFFF => {
                 print!(

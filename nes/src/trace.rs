@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::cpu::AddressingMode;
 use crate::cpu::Memory;
 use crate::cpu::CPU;
@@ -19,7 +17,7 @@ pub fn trace(cpu: &mut CPU) -> String {
     let (mem_addr, stored_value) = match ops.addressing_mode {
         AddressingMode::Immediate | AddressingMode::NoneAddressing => (0, 0),
         _ => {
-            let addr = cpu.get_absolute_address(&ops.addressing_mode, begin + 1);
+            let (addr, _) = cpu.get_absolute_address(&ops.addressing_mode, begin + 1);
             (addr, cpu.mem_read(addr))
         }
     };
