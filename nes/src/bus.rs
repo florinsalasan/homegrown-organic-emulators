@@ -1,9 +1,9 @@
-use std::num::NonZeroUsize;
 use std::usize;
 
 use crate::cartridge::Rom;
 use crate::cpu::Memory;
 use crate::ppu::NesPPU;
+use crate::ppu::PPU;
 
 //  _______________ $10000  _______________
 // | PRG-ROM       |       |               |

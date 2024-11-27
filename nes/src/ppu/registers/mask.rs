@@ -26,6 +26,11 @@ const EMPHASIZE_RED: u8 = 0b0010_0000; // Doesn't represent any flag
 const EMPHASIZE_GREEN: u8 = 0b0100_0000;
 const EMPHASIZE_BLUE: u8 = 0b1000_0000;
 
+pub enum Color {
+    Red,
+    Green,
+    Blue,
+}
 
 impl MaskRegister {
 
@@ -39,8 +44,39 @@ impl MaskRegister {
         self.value = data;
     }
 
-    pub fn get(&self) -> u8 {
-        self.value
+    pub fn is_grayscale(&self) -> bool {
+        self.value & GREYSCALE == GREYSCALE
     }
 
+    pub fn leftmost_8pixels_background(&self) -> bool {
+        self.value & BACKGROUND_LEFT_BOOL == BACKGROUND_LEFT_BOOL
+    }
+
+    pub fn leftmost_8pixels_sprite(&self) -> bool {
+        self.value & SPRITE_LEFT_BOOL == SPRITE_LEFT_BOOL
+    }
+
+    pub fn show_background(&self) -> bool {
+        self.value & BACKGROUND_RENDERING == BACKGROUND_RENDERING
+    }
+
+    pub fn show_sprites(&self) -> bool {
+        self.value & SPRITE_RENDERING == SPRITE_RENDERING
+    }
+
+    pub fn emphasize(&self) -> Vec<Color> {
+        let mut result = Vec::<Color>::new();
+        if self.value & EMPHASIZE_RED == EMPHASIZE_RED {
+            result.push(Color::Red);
+        }
+        if self.value & EMPHASIZE_BLUE == EMPHASIZE_BLUE {
+            result.push(Color::Blue);
+        }
+        if self.value & EMPHASIZE_GREEN == EMPHASIZE_GREEN {
+            result.push(Color::Green);
+        }
+
+        result
+
+    }
 }

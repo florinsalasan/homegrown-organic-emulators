@@ -27,14 +27,6 @@ impl StatusRegister {
         }
     }
 
-    pub fn update(&mut self, data: u8) {
-        self.value = data;
-    }
-
-    pub fn get(&self) -> u8 {
-        self.value
-    }
-
     pub fn snapshot(&self) -> u8 {
         self.value
     }
@@ -45,5 +37,29 @@ impl StatusRegister {
         } else {
             self.value = self.value & !VBLANK;
         }
+    }
+
+    pub fn set_sprite_zero_hit(&mut self, flagged: bool) {
+        if flagged {
+            self.value = self.value | SPRITE_0_HIT;
+        } else {
+            self.value = self.value & !SPRITE_0_HIT;
+        }
+    }
+
+    pub fn set_sprite_overflow(&mut self, flagged: bool) {
+        if flagged {
+            self.value = self.value | SPRITE_OVERFLOW;
+        } else {
+            self.value = self.value & !SPRITE_OVERFLOW;
+        }
+    }
+
+    pub fn is_in_vblank(&self) -> bool {
+        self.value & VBLANK == VBLANK
+    }
+
+    pub fn reset_vblank_status(&mut self) {
+        self.value = self.value & !VBLANK
     }
 }

@@ -8,7 +8,7 @@ impl AddrRegister {
 
     pub fn new() -> Self {
         AddrRegister {
-            value: (0, 0),
+            value: (0, 0), // High byte first since the PPU is big endian
             hi_ptr: true,
         }
     }

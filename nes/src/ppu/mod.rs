@@ -1,3 +1,5 @@
+use std::usize;
+
 use crate::cartridge::Mirroring;
 use registers::control::ControlRegister;
 use registers::mask::MaskRegister;
@@ -37,7 +39,7 @@ pub trait PPU {
     fn write_to_ppu_addr(&mut self, value: u8);
     fn write_to_data(&mut self, value: u8);
     fn read_data(&mut self) -> u8;
-    fn write_oam_dma(&mut self, value: u8);
+    fn write_oam_dma(&mut self, value: &[u8; 256]);
 }
 
 impl NesPPU {
@@ -95,6 +97,36 @@ impl NesPPU {
 
 impl PPU for NesPPU {
 
+    fn write_to_ppu_addr(&mut self, value: u8) {
+        self.addr.update(value);
+    }
+
+    fn write_to_ctrl(&mut self, value: u8) {
+        // TODO: there's a status set here in his code that doesn't get used
+        // so I've skipped it for now
+        self.ctrl.update(value);
+    }
+
+    fn write_to_data(&mut self, value: u8) {
+        let addr = self.addr.get();
+        match addr {
+            0..=0x1FFF => println!("Attempted to write to chr rom space: {:04x}", addr),
+            0x2000..=0x2FFF => {
+                self.vram[self.mirror_vram_addr(addr) as usize] = value;
+            }
+            0x3000..=0x3EFF => unimplemented!("Addr {:04x} shouldn't be used :/", addr),
+            0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
+                let add_mirror = addr - 0x10;
+                self.palette_table[(add_mirror - 0x3F00) as usize] = value;
+            }
+            0x3F00..=0x3FFF => {
+                self.palette_table[(addr - 0x3F00) as usize] = value;
+            }
+            _ => panic!("unexpected access to mirrored space {:04x}", addr),
+        }
+        self.increment_vram_addr();
+    }
+
     fn read_data(&mut self) -> u8 {
         let addr = self.addr.get();
         self.increment_vram_addr();
@@ -104,33 +136,58 @@ impl PPU for NesPPU {
                 let result = self.internal_data_buf;
                 self.internal_data_buf = self.chr_rom[addr as usize];
                 result
-            },
+            }
             0x2000..=0x2FFF => {
                 let result = self.internal_data_buf;
                 self.internal_data_buf = self.vram[self.mirror_vram_addr(addr) as usize];
                 result
-            },
-            0x3000..=0x3EFF => panic!("addr space 0x3000..0x3EFF is not expected to be used, requested = {:04x} ", addr),
+            }
+            0x3000..=0x3EFF => unimplemented!("Addr {:04x} shouldn't be used :/", addr),
+            0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
+                let add_mirror = addr - 0x10;
+                self.palette_table[(add_mirror - 0x3F00) as usize]
+            }
             0x3F00..=0x3FFF => {
                 self.palette_table[(addr - 0x3F00) as usize]
-            },
+            }
             _ => panic!("unexpected access to mirrored space {:04x}", addr),
         }
     }
 
-    fn write_to_ppu_addr(&mut self, value: u8) {
-        self.addr.update(value);
-    }
-
-    fn write_to_ctrl(&mut self, value: u8) {
-        self.ctrl.update(value);
-    }
-
-    fn write_to_data(&mut self, value: u8) {
-    }
-
     fn write_to_mask(&mut self, value: u8) {
         self.mask.update(value);
+    }
+
+    fn read_status(&mut self) -> u8 {
+        let data = self.status.snapshot();
+        self.status.reset_vblank_status();
+        self.addr.reset_latch();
+        self.scroll.reset_latch();
+        data
+    }
+
+    fn write_to_oam_addr(&mut self, value: u8) {
+        self.oam_addr = value;
+    }
+
+    fn write_to_oam_data(&mut self, value: u8) {
+        self.oam_data[self.oam_addr as usize] = value;
+        self.oam_addr = self.oam_addr.wrapping_add(1);
+    }
+
+    fn read_oam_data(&mut self) -> u8 {
+        self.oam_data[self.oam_addr as usize]
+    }
+
+    fn write_to_scroll(&mut self, value: u8) {
+        self.scroll.write(value);
+    }
+
+    fn write_oam_dma(&mut self, value: &[u8; 256]) {
+        for x in value.iter() {
+            self.oam_data[self.oam_addr as usize] = *x;
+            self.oam_addr = self.oam_addr.wrapping_add(1);
+        }
     }
 }
 
@@ -322,7 +379,7 @@ pub mod test {
         data[255] = 0x88;
 
         ppu.write_to_oam_addr(0x10);
-        ppu.write_oam_dma(data);
+        ppu.write_oam_dma(&data);
 
         ppu.write_to_oam_addr(0xf); //wrap around
         assert_eq!(ppu.read_oam_data(), 0x88);

@@ -36,12 +36,58 @@ impl ControlRegister {
         }
     }
 
+    pub fn nametable_addr(&self) -> u16 {
+        match self.value & (NAMETABLE1 | NAMETABLE2) {
+            0 => 0x2000,
+            1 => 0x2400,
+            2 => 0x2800,
+            3 => 0x2C00,
+            _ => panic!("This should not ever happen")
+        }
+    }
+
     pub fn vram_addr_increment(&self) -> u8 {
         if self.value & VRAM_ADDR_INCREMENT != VRAM_ADDR_INCREMENT {
             1
         } else {
             32
         }
+    }
+    
+    pub fn sprite_pattern_addr(&self) -> u16 {
+        if self.value & SPRITE_PATTERN_ADDR != SPRITE_PATTERN_ADDR {
+            0
+        } else {
+            0x1000
+        }
+    }
+
+    pub fn background_pattern_addr(&self) -> u16 {
+        if self.value & BACKGROUND_PATTERN_ADDR != BACKGROUND_PATTERN_ADDR {
+            0
+        } else {
+            0x1000
+        }
+    }
+
+    pub fn sprite_size(&self) -> u8 {
+        if self.value & SPRITE_SIZE != SPRITE_SIZE {
+            0
+        } else {
+            16
+        }
+    }
+
+    pub fn master_slave_select(&self) -> u8 {
+        if self.value & MASTER_SLAVE_SELECT != MASTER_SLAVE_SELECT {
+            0
+        } else {
+            1
+        }
+    }
+
+    pub fn generate_vblank_nmi(&self) -> bool {
+        self.value & GENERATE_NMI == GENERATE_NMI
     }
 
     pub fn update(&mut self, data: u8) {
