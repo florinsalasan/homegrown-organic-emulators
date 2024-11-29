@@ -5,6 +5,8 @@ use crate::cpu::CPU;
 use crate::trace::trace;
 use crate::render::frame::Frame;
 use crate::render::palette;
+use crate::render;
+use crate::ppu::NesPPU;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -85,11 +87,11 @@ pub fn show_tile_bank(chr_rom: &Vec<u8>, bank: usize) ->Frame {
 
 
 fn main() {
-    // init sdl2
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Tile viewer", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
+        .window("Tile viewer from tile_info.rs", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -104,25 +106,32 @@ fn main() {
         .unwrap();
 
     //load the game
-    let bytes: Vec<u8> = std::fs::read("ROMs/SuperMarioBros.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("ROMs/pacman.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
-    let right_bank = show_tile_bank(&rom.chr_rom, 1);
+    let mut frame = Frame::new();
 
-    texture.update(None, &right_bank.data, 256 * 3).unwrap();
-    canvas.copy(&texture, None, None).unwrap();
-    canvas.present();
+    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+        render::render(ppu, &mut frame);
+        texture.update(None, &frame.data, 256 * 3).unwrap();
 
-    loop {
+        canvas.copy(&texture, None, None).unwrap();
+
+        canvas.present();
         for event in event_pump.poll_iter() {
             match event {
-              Event::Quit { .. }
-              | Event::KeyDown {
-                  keycode: Some(Keycode::Escape),
-                  ..
-              } => std::process::exit(0),
-              _ => { /* do nothing */ }
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => std::process::exit(0),
+                _ => {/* Do nothing in here */}
             }
-         }
-    }
+        }
+    });
+
+    let mut cpu = CPU::new(bus);
+
+    cpu.reset();
+    cpu.run();
 }

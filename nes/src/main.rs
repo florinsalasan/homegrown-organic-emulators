@@ -11,6 +11,7 @@ use bus::Bus;
 use cartridge::Rom;
 use cpu::Memory;
 use cpu::CPU;
+use ppu::NesPPU;
 use trace::trace;
 use render::frame::Frame;
 use render::palette;
@@ -44,27 +45,34 @@ fn main() {
         .unwrap();
 
     //load the game
-    let bytes: Vec<u8> = std::fs::read("ROMs/SuperMarioBros.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("ROMs/pacman.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
-    let right_bank = show_tile_bank(&rom.chr_rom, 1);
+    let mut frame = Frame::new();
 
-    texture.update(None, &right_bank.data, 256 * 3).unwrap();
-    canvas.copy(&texture, None, None).unwrap();
-    canvas.present();
+    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+        render::render(ppu, &mut frame);
+        texture.update(None, &frame.data, 256 * 3).unwrap();
 
-    loop {
+        canvas.copy(&texture, None, None).unwrap();
+
+        canvas.present();
         for event in event_pump.poll_iter() {
             match event {
-              Event::Quit { .. }
-              | Event::KeyDown {
-                  keycode: Some(Keycode::Escape),
-                  ..
-              } => std::process::exit(0),
-              _ => { /* do nothing */ }
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => std::process::exit(0),
+                _ => {/* Do nothing in here */}
             }
-         }
-    }
+        }
+    });
+
+    let mut cpu = CPU::new(bus);
+
+    cpu.reset();
+    cpu.run();
 }
 
 // a helper function that helps read and respond to user inputs

@@ -20,5 +20,4 @@ impl Frame {
             self.data[base + 2] = rgb.2;
         }
     }
-
 }

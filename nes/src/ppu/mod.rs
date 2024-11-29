@@ -18,7 +18,7 @@ pub struct NesPPU {
     pub oam_addr: u8,
 
     addr: AddrRegister,
-    ctrl: ControlRegister,
+    pub ctrl: ControlRegister,
     mask: MaskRegister,
     status: StatusRegister,
     scroll: ScrollRegister,
