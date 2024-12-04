@@ -25,7 +25,7 @@ const NOT_A_FLAG_BIT: u8 = 0b0010_0000; // Doesn't represent any flag
 const OVERFLOW_BIT: u8 = 0b0100_0000;
 const NEGATIVE_BIT: u8 = 0b1000_0000;
 
-pub struct CPU<'a> {
+pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
@@ -33,7 +33,7 @@ pub struct CPU<'a> {
     pub program_counter: u16,
     pub stack_pointer: u8, // This points to the top of the stack, decrementing
     // when a byte of data is pushed to the stack and incrementing when popped
-    pub bus: Bus<'a>,
+    pub bus: Bus,
 }
 
 const STACK: u16 = 0x0100; // Starting address for the stack in the NES in memory
@@ -74,7 +74,7 @@ pub trait Memory {
     }
 }
 
-impl Memory for CPU<'_> {
+impl Memory for CPU {
     fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
@@ -118,8 +118,8 @@ mod interrupt {
     };
 }
 
-impl<'a> CPU<'a> {
-    pub fn new<'b>(bus_: Bus<'b>) -> CPU<'b> {
+impl CPU {
+    pub fn new(bus_: Bus) -> Self {
         CPU {
             register_a: 0, // accumulator but I can't be bothered to change the name atm
             register_x: 0,
@@ -1673,7 +1673,7 @@ mod test {
 
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
-        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         dbg!(cpu.load_and_run(vec![0xa9, 0x05, 0x00]));
         assert_eq!(cpu.register_a, 5);
@@ -1683,7 +1683,7 @@ mod test {
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
-        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
         cpu.load(vec![0xaa, 0x00]);
@@ -1695,7 +1695,7 @@ mod test {
 
     #[test]
     fn test_5_ops_working_together() {
-        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
 
@@ -1704,7 +1704,7 @@ mod test {
 
     #[test]
     fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.register_x = 0xff;
         // have to use load() and run() separately because load_and_run calls 
@@ -1718,7 +1718,7 @@ mod test {
 
     #[test]
     fn test_lda_from_memory() {
-        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom());
         let mut cpu = CPU::new(bus);
         cpu.bus.mem_write(0x10, 0x55);
 
