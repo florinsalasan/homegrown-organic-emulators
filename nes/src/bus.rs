@@ -46,7 +46,7 @@ pub struct Bus<'call> {
 
 impl<'a> Bus<'a> {
     pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call>
-    where 
+    where
         F: FnMut(&NesPPU) + 'call,
     {
         let ppu = NesPPU::new(rom.chr_rom, rom.screen_mirroring);
@@ -74,9 +74,10 @@ impl<'a> Bus<'a> {
 
         let new_frame = self.ppu.tick(cycles * 3);
 
-        if !new_frame {
-            (self.gameloop_callback)(&self.ppu);
+        if new_frame {
+            (self.gameloop_callback)(&self.ppu)
         }
+
     }
 
     pub fn poll_nmi_status(&mut self) -> Option<u8> {
@@ -202,7 +203,7 @@ mod test {
 
     #[test]
     fn test_mem_read_write_to_ram() {
-        let mut bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
+        let mut bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {}); 
         bus.mem_write(0x01, 0x55);
         assert_eq!(bus.mem_read(0x01), 0x55);
     }
