@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::cartridge::Rom;
 use crate::cpu::Memory;
 use crate::ppu::NesPPU;
@@ -35,7 +33,6 @@ use crate::ppu::PPU;
 
 const RAM: u16 = 0x0000;
 const RAM_MIRRORS_END: u16 = 0x1FFF;
-const PPU_REGISTERS: u16 = 0x2000;
 const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 
 pub struct Bus<'call> {
@@ -49,8 +46,8 @@ pub struct Bus<'call> {
 
 impl<'a> Bus<'a> {
     pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call>
-        where 
-            F: FnMut(&NesPPU) + 'call,
+    where 
+        F: FnMut(&NesPPU) + 'call,
     {
         let ppu = NesPPU::new(rom.chr_rom, rom.screen_mirroring);
 
@@ -87,7 +84,7 @@ impl<'a> Bus<'a> {
     }
 }
 
-impl <'call> Memory for Bus<'call> {
+impl Memory for Bus<'_> {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
             RAM..=RAM_MIRRORS_END => {
@@ -95,15 +92,30 @@ impl <'call> Memory for Bus<'call> {
                 self.cpu_vram[mirror_down_addr as usize]
             }
             0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
-                panic!("Attempt to read from write-only PPU address {:x}", addr);
+                // panic!("Attempt to read from write-only PPU address {:x}", addr);
+                0
             }
             0x2002 => self.ppu.read_status(),
             0x2004 => self.ppu.read_oam_data(),
             0x2007 => self.ppu.read_data(),
 
+            0x4000..=0x4015 => {
+                // Future APU reads
+                0
+            }
+
+            0x4016 => {
+                // Future Joypad1 value
+                0
+            }
+
+            0x4017 => {
+                // Future Joypad2 value
+                0
+            }
+
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
-                // todo!("PPU not supported yet")
                 self.mem_read(_mirror_down_addr)
             }
             0x8000..=0xFFFF => self.read_prg_rom(addr),
@@ -144,9 +156,30 @@ impl <'call> Memory for Bus<'call> {
             0x2007 => {
                 self.ppu.write_to_data(data);
             }
+            
+            0x4000..=0x4013 | 0x4015 => {
+                // APU access
+            }
+
+            0x4016 => {
+                // Future Joypad1 value
+            }
+
+            0x4017 => {
+                // Future Joypad2 value
+            }
+
+            0x4014 => {
+                let mut buffer: [u8; 256] = [0; 256];
+                let hi: u16 = (data as u16) << 8;
+                for i in 0..256u16 {
+                    buffer[i as usize] = self.mem_read(hi + i);
+                }
+                self.ppu.write_oam_dma(&buffer);
+            }
+
             0x2008..=PPU_REGISTERS_MIRRORS_END => {
                 let _mirror_down_addr = addr & 0b00100000_00000111;
-                // todo!("PPU not supported yet")
                 self.mem_write(_mirror_down_addr, data);
             }
             0x8000..=0xFFFF => {
@@ -169,7 +202,7 @@ mod test {
 
     #[test]
     fn test_mem_read_write_to_ram() {
-        let mut bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         bus.mem_write(0x01, 0x55);
         assert_eq!(bus.mem_read(0x01), 0x55);
     }

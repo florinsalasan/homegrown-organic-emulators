@@ -13,7 +13,7 @@ fn bg_palette(ppu: &NesPPU, tile_column: usize, tile_row: usize) -> [u8; 4] {
         (0, 0) => attr_byte & 0b11,
         (1, 0) => (attr_byte >> 2) & 0b11,
         (0, 1) => (attr_byte >> 4) & 0b11,
-        (1, 1) => (attr_byte >> 2) & 0b11,
+        (1, 1) => (attr_byte >> 6) & 0b11,
         (_, _) => panic!("Why are you using a quantum computer to run this?"),
     };
 
@@ -48,14 +48,14 @@ pub fn render(ppu: &NesPPU, frame: &mut Frame) {
             let mut lower = tile[y + 8];
 
             for x in (0..=7).rev() {
-                let value = (1 & upper) << 1 | (1 & lower);
+                let value = (1 & lower) << 1 | (1 & upper);
                 upper = upper >> 1;
                 lower = lower >> 1;
                 let rgb = match value {
-                    0 => palette::SYSTEM_PALETTE[0x01],
-                    1 => palette::SYSTEM_PALETTE[0x23],
-                    2 => palette::SYSTEM_PALETTE[0x27],
-                    3 => palette::SYSTEM_PALETTE[0x30],
+                    0 => palette::SYSTEM_PALETTE[ppu.palette_table[0] as usize],
+                    1 => palette::SYSTEM_PALETTE[palette[1] as usize],
+                    2 => palette::SYSTEM_PALETTE[palette[2] as usize],
+                    3 => palette::SYSTEM_PALETTE[palette[3] as usize],
                     _ => panic!("can't be"),
                 };
                 frame.set_pixel(tile_column * 8 + x, tile_row * 8 + y, rgb)
@@ -90,15 +90,15 @@ pub fn render(ppu: &NesPPU, frame: &mut Frame) {
             let mut upper = tile[y];
             let mut lower = tile[y + 8];
 
-            'color: for x in (0..=7).rev() {
+            'colour: for x in (0..=7).rev() {
                 let value = (1 & lower) << 1 | (1 & upper);
                 upper = upper >> 1;
                 lower = lower >> 1;
                 let rgb = match value {
-                    0 => continue 'color,
-                    1 => palette::SYSTEM_PALETTE[0x23],
-                    2 => palette::SYSTEM_PALETTE[0x27],
-                    3 => palette::SYSTEM_PALETTE[0x30],
+                    0 => continue 'colour, // skips colouring the pixel
+                    1 => palette::SYSTEM_PALETTE[sprite_palette[1] as usize],
+                    2 => palette::SYSTEM_PALETTE[sprite_palette[2] as usize],
+                    3 => palette::SYSTEM_PALETTE[sprite_palette[3] as usize],
                     _ => panic!("can't be"),
                 };
                 match (flip_horizontal, flip_vertical) {
@@ -106,7 +106,6 @@ pub fn render(ppu: &NesPPU, frame: &mut Frame) {
                     (true, false) => frame.set_pixel(tile_x + 7 - x, tile_y + y, rgb),
                     (false, true) => frame.set_pixel(tile_x + x, tile_y + 7 - y, rgb),
                     (true, true) => frame.set_pixel(tile_x + 7 - x, tile_y + 7 - y, rgb),
-
                 }
             }
         }

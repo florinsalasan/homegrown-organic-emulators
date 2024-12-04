@@ -1256,7 +1256,6 @@ impl<'a> CPU<'a> {
             self.mem_write(0x0600 + i, program[i as usize]);
         }
         // self.mem_write_u16(0xFFFC, 0x8600);
-        self.program_counter = 0x0600;
     }
 
     pub fn interrupt(&mut self, interrupt: interrupt::Interrupt) {
@@ -1269,7 +1268,7 @@ impl<'a> CPU<'a> {
         self.status = self.status | INTERRUPT_DISABLE_BIT;
 
         self.bus.tick(interrupt.cpu_cycles);
-        self.program_counter = self.mem_read_u16(0xFFFA);
+        self.program_counter = self.mem_read_u16(interrupt.vector_addr);
     }
 
     // The main CPU loop is:
@@ -1292,18 +1291,16 @@ impl<'a> CPU<'a> {
         let other_map = init_opcodes_hashmap();
 
         loop {
-            callback(self);
-
             if let Some(_nmi) = self.bus.poll_nmi_status() {
                 self.interrupt(interrupt::NMI);
             }
+
+            callback(self);
 
             let opcode = self.mem_read(self.program_counter);
             let mapped_opcode = other_map.get(&opcode).expect(&format!("{:x} is not recognized", opcode));
             self.program_counter += 1; // could wrapping add this maybe?
             let program_counter_state = self.program_counter;
-
-            self.bus.tick(mapped_opcode.cycles);
 
             match &mapped_opcode.opcode_num {
                 // BRK
@@ -1582,8 +1579,7 @@ impl<'a> CPU<'a> {
 
                 // DOP
                 0x04 | 0x14 | 0x34 | 0x44 | 0x54 | 0x64 | 0x74 | 0x80 | 0x82 | 0x89 |0xC2 | 0xD4 | 0xE2 | 0xF4 => {
-                    let (addr, page_cross) = self.get_operand_address(&other_map[&opcode].addressing_mode);
-                    let data = self.mem_read(addr);
+                    let (_addr, page_cross) = self.get_operand_address(&other_map[&opcode].addressing_mode);
                     if page_cross {
                         self.bus.tick(1);
                     }
@@ -1640,8 +1636,7 @@ impl<'a> CPU<'a> {
 
                 // TOP
                 0x0C | 0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => {
-                    let (addr, page_cross) = self.get_operand_address(&other_map[&opcode].addressing_mode);
-                    let data = self.mem_read(addr);
+                    let (_addr, page_cross) = self.get_operand_address(&other_map[&opcode].addressing_mode);
                     if page_cross {
                         self.bus.tick(1);
                     }
@@ -1661,6 +1656,8 @@ impl<'a> CPU<'a> {
                 // }
             }
 
+            self.bus.tick(other_map[&opcode].cycles);
+
             if program_counter_state == self.program_counter {
                 self.program_counter += (other_map[&opcode].bytes - 1) as u16;
             }
@@ -1676,7 +1673,7 @@ mod test {
 
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         dbg!(cpu.load_and_run(vec![0xa9, 0x05, 0x00]));
         assert_eq!(cpu.register_a, 5);
@@ -1686,10 +1683,11 @@ mod test {
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
         cpu.load(vec![0xaa, 0x00]);
+        cpu.program_counter = 0x0600;
         cpu.run();
 
         assert_eq!(cpu.register_x, 10)
@@ -1697,7 +1695,7 @@ mod test {
 
     #[test]
     fn test_5_ops_working_together() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
 
@@ -1706,12 +1704,13 @@ mod test {
 
     #[test]
     fn test_inx_overflow() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.register_x = 0xff;
         // have to use load() and run() separately because load_and_run calls 
         // reset() breaking the test
         cpu.load(vec![0xe8, 0xe8, 0x00]);
+        cpu.program_counter = 0x0600;
         cpu.run();
 
         assert_eq!(cpu.register_x, 1)
@@ -1719,7 +1718,7 @@ mod test {
 
     #[test]
     fn test_lda_from_memory() {
-        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU| {});
         let mut cpu = CPU::new(bus);
         cpu.bus.mem_write(0x10, 0x55);
 

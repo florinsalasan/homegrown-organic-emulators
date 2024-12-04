@@ -72,7 +72,7 @@ impl ControlRegister {
 
     pub fn sprite_size(&self) -> u8 {
         if self.value & SPRITE_SIZE != SPRITE_SIZE {
-            0
+            8
         } else {
             16
         }

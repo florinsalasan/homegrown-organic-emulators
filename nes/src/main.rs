@@ -4,15 +4,15 @@ pub mod cpu;
 pub mod opcodes;
 pub mod trace;
 pub mod ppu;
+pub mod render;
 
+use crate::trace::trace;
 use bus::Bus;
 use cartridge::Rom;
 use cpu::Memory;
 use cpu::CPU;
 use ppu::NesPPU;
-use trace::trace;
-
-use rand::prelude::*;
+use render::frame::Frame;
 
 extern crate sdl2;
 
@@ -27,7 +27,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("NES", (32.0 * 10.0) as u32, (32.0 * 10.0) as u32)
+        .window("NES", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -73,7 +73,27 @@ fn main() {
     let bytes: Vec<u8> = std::fs::read("ROMs/nestest.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
-    let bus = Bus::new(rom);
+    let mut frame = Frame::new();
+
+    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+        render::render(ppu, &mut frame);
+        texture.update(None, &frame.data, 256 * 3).unwrap();
+
+        canvas.copy(&texture, None, None).unwrap();
+
+        canvas.present();
+        for event in event_pump.poll_iter() {
+            match event {
+              Event::Quit { .. }
+              | Event::KeyDown {
+                  keycode: Some(Keycode::Escape),
+                  ..
+              } => std::process::exit(0),
+              _ => {/* Do nothing in here */}
+            }
+        }
+    });
+
     let mut cpu = CPU::new(bus);
     // cpu.load(game_code);
     cpu.reset();

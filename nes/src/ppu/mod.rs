@@ -17,15 +17,15 @@ pub struct NesPPU {
     pub oam_data: [u8; 256],
     pub oam_addr: u8,
 
-    addr: AddrRegister,
+    pub addr: AddrRegister,
     pub ctrl: ControlRegister,
-    mask: MaskRegister,
-    status: StatusRegister,
-    scroll: ScrollRegister,
+    pub mask: MaskRegister,
+    pub status: StatusRegister,
+    pub scroll: ScrollRegister,
 
     internal_data_buf: u8,
 
-    scanline: u16,
+    pub scanline: u16,
     cycles: usize,
 
     pub mirroring: Mirroring,
@@ -39,7 +39,7 @@ pub trait PPU {
     fn read_status(&mut self) -> u8;
     fn write_to_oam_addr(&mut self, value: u8);
     fn write_to_oam_data(&mut self, value: u8);
-    fn read_oam_data(&mut self) -> u8;
+    fn read_oam_data(&self) -> u8;
     fn write_to_scroll(&mut self, value: u8);
     fn write_to_ppu_addr(&mut self, value: u8);
     fn write_to_data(&mut self, value: u8);
@@ -52,9 +52,9 @@ impl NesPPU {
         NesPPU::new(vec![0; 2048], Mirroring::HORIZONTAL)
     }
 
-    fn poll_nmi_interrupt(&mut self) -> Option<u8> {
-        self.nmi_interrupt.take()
-    }
+    // fn poll_nmi_interrupt(&mut self) -> Option<u8> {
+        // self.nmi_interrupt.take()
+    // }
 
     pub fn tick(&mut self, cycles: u8) -> bool {
         self.cycles += cycles as usize;
@@ -63,14 +63,17 @@ impl NesPPU {
             self.scanline += 1;
 
             if self.scanline == 241 {
+                self.status.set_vblank_status(true);
+                self.status.set_sprite_zero_hit(false);
                 if self.ctrl.generate_vblank_nmi() {
-                    self.status.set_vblank_status(true);
-                    todo!("Trigger an NMI interrupt")
+                    self.nmi_interrupt = Some(1);
                 }
             }
 
             if self.scanline >= 262 {
                 self.scanline = 0;
+                self.nmi_interrupt = None;
+                self.status.set_sprite_zero_hit(false);
                 self.status.reset_vblank_status();
                 return true;
             }
@@ -136,8 +139,6 @@ impl PPU for NesPPU {
     }
 
     fn write_to_ctrl(&mut self, value: u8) {
-        // TODO: there's a status set here in his code that doesn't get used
-        // so I've skipped it for now
         let before_nmi_status = self.ctrl.generate_vblank_nmi();
         self.ctrl.update(value);
         if !before_nmi_status && self.ctrl.generate_vblank_nmi() && self.status.is_in_vblank() {
@@ -154,8 +155,8 @@ impl PPU for NesPPU {
             }
             0x3000..=0x3EFF => unimplemented!("Addr {:04x} shouldn't be used :/", addr),
             0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
-                let add_mirror = addr - 0x10;
-                self.palette_table[(add_mirror - 0x3F00) as usize] = value;
+                let addr_mirror = addr - 0x0010;
+                self.palette_table[(addr_mirror - 0x3F00) as usize] = value;
             }
             0x3F00..=0x3FFF => {
                 self.palette_table[(addr - 0x3F00) as usize] = value;
@@ -182,7 +183,7 @@ impl PPU for NesPPU {
             }
             0x3000..=0x3EFF => unimplemented!("Addr {:04x} shouldn't be used :/", addr),
             0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
-                let add_mirror = addr - 0x10;
+                let add_mirror = addr - 0x0010;
                 self.palette_table[(add_mirror - 0x3F00) as usize]
             }
             0x3F00..=0x3FFF => {
@@ -213,7 +214,7 @@ impl PPU for NesPPU {
         self.oam_addr = self.oam_addr.wrapping_add(1);
     }
 
-    fn read_oam_data(&mut self) -> u8 {
+    fn read_oam_data(&self) -> u8 {
         self.oam_data[self.oam_addr as usize]
     }
 

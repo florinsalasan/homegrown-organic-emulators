@@ -13,7 +13,6 @@ pub struct StatusRegister {
     value: u8,
 }
 
-const PPU_OPEN_BUS: u8 = 0b0001_0000;
 const SPRITE_OVERFLOW: u8 = 0b0010_0000; // Doesn't represent any flag
 const SPRITE_0_HIT: u8 = 0b0100_0000;
 const VBLANK: u8 = 0b1000_0000;
