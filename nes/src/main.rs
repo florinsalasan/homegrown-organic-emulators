@@ -6,6 +6,7 @@ pub mod trace;
 pub mod ppu;
 pub mod render;
 pub mod tiles_viewer;
+pub mod controller;
 
 use crate::trace::trace;
 use bus::Bus;
