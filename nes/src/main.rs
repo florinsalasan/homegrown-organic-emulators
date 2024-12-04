@@ -49,7 +49,7 @@ fn main() {
 
     let mut frame = Frame::new();
 
-    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+    let bus = Bus::new(rom, |ppu: &NesPPU| {
         render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256*3).unwrap();
 
