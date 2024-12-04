@@ -35,17 +35,20 @@ const RAM: u16 = 0x0000;
 const RAM_MIRRORS_END: u16 = 0x1FFF;
 const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 
-pub struct Bus {
+pub struct Bus<'call> {
     cpu_vram: [u8; 2048],
     prg_rom: Vec<u8>,
     ppu: NesPPU,
 
     cycles: usize,
+    gameloop_callback: Box<dyn FnMut(&NesPPU) + 'call>,
 }
 
-impl Bus {
-    pub fn new(rom: Rom) -> Self {
-
+impl<'a> Bus<'a> {
+    pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call>
+    where
+        F: FnMut(&NesPPU) + 'call,
+    {
         let ppu = NesPPU::new(rom.chr_rom, rom.screen_mirroring);
 
         Bus {
@@ -53,6 +56,7 @@ impl Bus {
             prg_rom: rom.prg_rom,
             ppu,
             cycles: 0,
+            gameloop_callback: Box::from(gameloop_callback),
         }
     }
 
@@ -70,6 +74,10 @@ impl Bus {
 
         let new_frame = self.ppu.tick(cycles * 3);
 
+        if new_frame {
+            (self.gameloop_callback)(&self.ppu)
+        }
+
     }
 
     pub fn poll_nmi_status(&mut self) -> Option<u8> {
@@ -77,7 +85,7 @@ impl Bus {
     }
 }
 
-impl Memory for Bus {
+impl Memory for Bus<'_> {
     fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
             RAM..=RAM_MIRRORS_END => {
@@ -195,7 +203,7 @@ mod test {
 
     #[test]
     fn test_mem_read_write_to_ram() {
-        let mut bus = Bus::new(test::test_rom()); 
+        let mut bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {}); 
         bus.mem_write(0x01, 0x55);
         assert_eq!(bus.mem_read(0x01), 0x55);
     }
