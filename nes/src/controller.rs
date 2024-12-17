@@ -1,28 +1,29 @@
-pub struct ControllerButton {
-    value: u8,
+const BUTTON_A: u8 = 0b0000_0001;
+const BUTTON_B: u8 = 0b0000_0010;
+const SELECT: u8 = 0b0000_0100;
+const START: u8 = 0b0000_1000;
+const UP: u8 = 0b0001_0000;
+const DOWN: u8 = 0b0010_0000;
+const LEFT: u8 = 0b0100_0000;
+const RIGHT: u8 = 0b1000_0000;
+
+#[derive(Debug, Clone, Copy)]
+pub enum ControllerButtons {
+    BUTTON_A = 0b0000_0001,
+    BUTTON_B = 0b0000_0010,
+    SELECT = 0b0000_0100,
+    START = 0b0000_1000,
+    UP = 0b0001_0000,
+    DOWN = 0b0010_0000,
+    LEFT = 0b0100_0000,
+    RIGHT = 0b1000_0000,
 }
 
-impl ControllerButton {
-    pub fn new() -> Self {
-        ControllerButton {
-            value:  0,
-        }
-    }
-}
-
-const RIGHT: u8       = 0b10000000;
-const LEFT: u8        = 0b01000000;
-const DOWN: u8        = 0b00100000;
-const UP: u8          = 0b00010000;
-const START: u8       = 0b00001000;
-const SELECT: u8      = 0b00000100;
-const BUTTON_B: u8    = 0b00000010;
-const BUTTON_A: u8    = 0b00000001;
-
+#[derive(Debug, Clone, Copy)]
 pub struct Controller {
     strobe: bool,
     button_idx: u8,
-    button_status: ControllerButton,
+    pub button_status: u8,
 }
 
 impl Controller {
@@ -30,7 +31,7 @@ impl Controller {
         Controller {
             strobe: false,
             button_idx: 0,
-            button_status: ControllerButton::new(),
+            button_status: 0,
         }
     }
 
@@ -45,10 +46,62 @@ impl Controller {
         if self.button_idx > 7 {
             return 1;
         }
-        let response = (self.button_status.value & (1 << self.button_idx)) >> self.button_idx;
+        let response = (self.button_status & (1 << self.button_idx)) >> self.button_idx;
         if !self.strobe && self.button_idx <= 7 {
             self.button_idx += 1;
         }
         response
+    }
+
+    pub fn set_button_pressed_status(&mut self, init_button: ControllerButtons, pressed: bool) {
+        let button = init_button as u8;
+        if pressed {
+            self.button_status = self.button_status | button;
+        } else {
+            self.button_status = self.button_status & !button;
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_strobe_mode() {
+        let mut joypad = Controller::new();
+        joypad.write(1);
+        joypad.set_button_pressed_status(ControllerButtons::BUTTON_A, true);
+        for _x in 0..10 {
+            assert_eq!(joypad.read(), 1);
+        }
+    }
+
+    #[test]
+    fn test_strobe_mode_on_off() {
+        let mut joypad = Controller::new();
+
+        joypad.write(0);
+        joypad.set_button_pressed_status(ControllerButtons::RIGHT, true);
+        joypad.set_button_pressed_status(ControllerButtons::LEFT, true);
+        joypad.set_button_pressed_status(ControllerButtons::SELECT, true);
+        joypad.set_button_pressed_status(ControllerButtons::BUTTON_B, true);
+
+        for _ in 0..=1 {
+            assert_eq!(joypad.read(), 0);
+            assert_eq!(joypad.read(), 1);
+            assert_eq!(joypad.read(), 1);
+            assert_eq!(joypad.read(), 0);
+            assert_eq!(joypad.read(), 0);
+            assert_eq!(joypad.read(), 0);
+            assert_eq!(joypad.read(), 1);
+            assert_eq!(joypad.read(), 1);
+
+            for _x in 0..10 {
+                assert_eq!(joypad.read(), 1);
+            }
+            joypad.write(1);
+            joypad.write(0);
+        }
     }
 }
