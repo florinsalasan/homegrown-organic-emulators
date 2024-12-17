@@ -6,8 +6,12 @@ pub mod trace;
 pub mod ppu;
 pub mod render;
 pub mod tiles_viewer;
+pub mod controller;
+
+use std::collections::HashMap;
 
 use crate::trace::trace;
+use crate::controller::Controller;
 use bus::Bus;
 use cartridge::Rom;
 use cpu::Memory;
@@ -24,7 +28,19 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 
+
+
 fn main() {
+
+    let mut key_map = HashMap::new();
+    key_map.insert(Keycode::Down, controller::ControllerButtons::DOWN);
+    key_map.insert(Keycode::Up, controller::ControllerButtons::UP);
+    key_map.insert(Keycode::Left, controller::ControllerButtons::LEFT);
+    key_map.insert(Keycode::Right, controller::ControllerButtons::RIGHT);
+    key_map.insert(Keycode::Space, controller::ControllerButtons::SELECT);
+    key_map.insert(Keycode::Return, controller::ControllerButtons::START);
+    key_map.insert(Keycode::A, controller::ControllerButtons::BUTTON_A);
+    key_map.insert(Keycode::S, controller::ControllerButtons::BUTTON_B);
 
     let sdl_context = sdl2::
         init().unwrap();
@@ -44,12 +60,12 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let bytes: Vec<u8> = std::fs::read("ROMs/SuperMarioBros.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("ROMs/pacman.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let mut frame = Frame::new();
 
-    let bus = Bus::new(rom, |ppu: &NesPPU| {
+    let bus = Bus::new(rom, |ppu: &NesPPU, controller: &mut controller::Controller| {
         render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256*3).unwrap();
 
@@ -63,6 +79,18 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => std::process::exit(0),
+                Event::KeyDown { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        controller.set_button_pressed_status(*key, true);
+                    }
+                    println!("Key down, controller status: {:b}", controller.button_status)
+                }
+                Event::KeyUp { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        controller.set_button_pressed_status(*key, false);
+                    }
+                    println!("Key up, controller status: {:b}", controller.button_status)
+                }
                 _ => { /* do nothing */ }
             }
         }
