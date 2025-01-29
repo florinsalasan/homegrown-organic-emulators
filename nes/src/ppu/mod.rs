@@ -45,6 +45,7 @@ pub trait PPU {
     fn write_to_data(&mut self, value: u8);
     fn read_data(&mut self) -> u8;
     fn write_oam_dma(&mut self, value: &[u8; 256]);
+    fn is_sprite_0_hit(&mut self, cycle: usize) -> bool;
 }
 
 impl NesPPU {
@@ -59,6 +60,11 @@ impl NesPPU {
     pub fn tick(&mut self, cycles: u8) -> bool {
         self.cycles += cycles as usize;
         if self.cycles >= 341 {
+
+            if self.is_sprite_0_hit(self.cycles) {
+                self.status.set_sprite_zero_hit(true);
+            }
+
             self.cycles = self.cycles - 341;
             self.scanline += 1;
 
@@ -191,6 +197,13 @@ impl PPU for NesPPU {
             }
             _ => panic!("unexpected access to mirrored space {:04x}", addr),
         }
+    }
+
+    fn is_sprite_0_hit(&mut self, cycle: usize) -> bool {
+        let y = self.oam_data[0] as usize;
+        let x = self.oam_data[3] as usize;
+
+        (y == self.scanline as usize) && x <= cycle && self.mask.show_sprites()
     }
 
     fn write_to_mask(&mut self, value: u8) {

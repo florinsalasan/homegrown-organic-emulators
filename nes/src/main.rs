@@ -60,7 +60,7 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let bytes: Vec<u8> = std::fs::read("ROMs/pacman.nes").unwrap();
+    let bytes: Vec<u8> = std::fs::read("ROMs/SuperMarioBros.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let mut frame = Frame::new();
