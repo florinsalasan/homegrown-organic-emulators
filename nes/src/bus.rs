@@ -75,16 +75,18 @@ impl<'a> Bus<'a> {
     pub fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;
 
-        let new_frame = self.ppu.tick(cycles * 3);
+        let nmi_before = self.ppu.nmi_interrupt.is_some();
+        self.ppu.tick(cycles * 3);
+        let nmi_after = self.ppu.nmi_interrupt.is_some();
 
-        if new_frame {
-            (self.gameloop_callback)(&self.ppu, &mut self.controller1)
+        if !nmi_before && nmi_after {
+            (self.gameloop_callback)(&self.ppu, &mut self.controller1);
         }
 
     }
 
     pub fn poll_nmi_status(&mut self) -> Option<u8> {
-        self.ppu.nmi_interrupt.take()
+        self.ppu.poll_nmi_interrupt()
     }
 }
 

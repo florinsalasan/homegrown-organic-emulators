@@ -1299,7 +1299,7 @@ impl<'a> CPU<'a> {
 
             let opcode = self.mem_read(self.program_counter);
             let mapped_opcode = other_map.get(&opcode).expect(&format!("{:x} is not recognized", opcode));
-            self.program_counter += 1; // could wrapping add this maybe?
+            self.program_counter = self.program_counter.wrapping_add(1); 
             let program_counter_state = self.program_counter;
 
             match &mapped_opcode.opcode_num {
