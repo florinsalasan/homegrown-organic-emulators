@@ -1,3 +1,6 @@
+use std::env;
+use std::env::args;
+
 pub mod bus;
 pub mod cartridge;
 pub mod cpu;
@@ -60,7 +63,14 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let bytes: Vec<u8> = std::fs::read("ROMs/SuperMarioBros.nes").unwrap();
+    let args: Vec<String> = env::args().collect();
+    print!("This is the args debug print {:?}\n", args);
+    if args.len() != 2 {
+        panic!("Usage: 'cargo run -- `path_to_rom`'");
+    }
+    let rom_path = args[1].clone();
+
+    let bytes: Vec<u8> = std::fs::read(rom_path).unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let mut frame = Frame::new();
