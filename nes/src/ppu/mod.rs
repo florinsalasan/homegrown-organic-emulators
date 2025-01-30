@@ -135,8 +135,8 @@ impl NesPPU {
 
         match (&self.mirroring, name_table) {
             (Mirroring::VERTICAL, 2) | (Mirroring::VERTICAL, 3) => vram_index - 0x0800,
-            (Mirroring::HORIZONTAL, 2) => vram_index - 0x0400,
-            (Mirroring::HORIZONTAL, 1) => vram_index - 0x0400,
+            (Mirroring::HORIZONTAL, 2) | (Mirroring::HORIZONTAL, 1)  => vram_index - 0x0400,
+            // (Mirroring::HORIZONTAL, 1) => vram_index - 0x0400,
             (Mirroring::HORIZONTAL, 3) => vram_index - 0x0800,
             _ => vram_index,
         }
