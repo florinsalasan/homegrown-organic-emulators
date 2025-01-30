@@ -14,8 +14,8 @@
 
 #[derive(Debug)]
 pub struct ScrollRegister  {
-    scroll_x: u8,
-    scroll_y: u8,
+    pub scroll_x: u8,
+    pub scroll_y: u8,
     pub latch: bool,
 }
 

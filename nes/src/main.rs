@@ -1,3 +1,6 @@
+use std::env;
+use std::env::args;
+
 pub mod bus;
 pub mod cartridge;
 pub mod cpu;
@@ -46,29 +49,36 @@ fn main() {
         init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("NES", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
+        .window("NES", (256.0 * 2.0) as u32, (240.0 * 2.0) as u32)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    canvas.set_scale(3.0, 3.0).unwrap();
+    canvas.set_scale(2.0, 2.0).unwrap();
 
     let creator = canvas.texture_creator();
     let mut texture = creator
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
-    let bytes: Vec<u8> = std::fs::read("ROMs/pacman.nes").unwrap();
+    let args: Vec<String> = env::args().collect();
+    print!("This is the args debug print {:?}\n", args);
+    if args.len() != 2 {
+        panic!("Usage: 'cargo run -- `path_to_rom`'");
+    }
+    let rom_path = args[1].clone();
+
+    let bytes: Vec<u8> = std::fs::read(rom_path).unwrap();
     let rom = Rom::new(&bytes).unwrap();
 
     let mut frame = Frame::new();
 
-    let bus = Bus::new(rom, |ppu: &NesPPU, controller: &mut controller::Controller| {
+    let bus = Bus::new(rom, move |ppu: &NesPPU, controller: &mut controller::Controller| {
         render::render(ppu, &mut frame);
-        texture.update(None, &frame.data, 256*3).unwrap();
-
+        texture.update(None, &frame.data, 256 * 3).unwrap();
+ 
         canvas.copy(&texture, None, None).unwrap();
 
         canvas.present();

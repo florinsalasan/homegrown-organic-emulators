@@ -1,3 +1,4 @@
+/*
 const BUTTON_A: u8 = 0b0000_0001;
 const BUTTON_B: u8 = 0b0000_0010;
 const SELECT: u8 = 0b0000_0100;
@@ -6,6 +7,7 @@ const UP: u8 = 0b0001_0000;
 const DOWN: u8 = 0b0010_0000;
 const LEFT: u8 = 0b0100_0000;
 const RIGHT: u8 = 0b1000_0000;
+*/
 
 #[derive(Debug, Clone, Copy)]
 pub enum ControllerButtons {
